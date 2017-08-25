@@ -1,7 +1,7 @@
 LIBS = `pkg-config --libs expat`
 CC = gcc
 CFLAGS = -Wall -Werror -O2 -g
-OBJS = atom-list rss2atom
+OBJS = atom-list feed-unescape rss2atom
 
 all: $(OBJS)
 
