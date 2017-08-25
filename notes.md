@@ -20,13 +20,16 @@ Wants:
 - Scripts can be edge-triggered (things created, removed, marked read)
 - We only need to store a minimal amount of information!
 
+Note that XSLT would be a natural choice for implementing simple generators,
+the utilities, or any scrapers for readers.
+Because XSLT only works on well-formed XML this may imply converting from HTML
+to XML before processing (eg using [tidy](https://github.com/htacg/tidy-html5)).
+
 ## Feed format
 
 - Atom feeds are more general, so convert to those...
 - Alternative would be to design a custom feed format and provide convertors
   to/from
-
-I should probably learn XSLT!!!
 
 Feeds each have an identifying ID; feed entries also have an identifiying ID.
 
@@ -105,12 +108,12 @@ variables!!), dropping or duplicating entries, or worse!
 - `rss2atom` for helping the `fetch` executable convert RSS feeds.
 - `atom-exec` for providing access to the contents of an atom entry for the
   `cache` and `open` executables.
-- `atom-list` for listing the entry ids in a feed.
+- `atom-list` for listing the (escaped) entry ids in a feed.
 - `atom-extract` for pulling out a specific entry from a feed.
-- `atom-id2file` for converting from an atom id (a IRI) to a valid filename.
+- `feed-unescape` for converting an escaped id to the original id.
 
 To simplify things it might be worth combining `atom-list`, `atom-extract`, and
-`atom-id2file` into a simple `feed-update` helper which manages the feed
+`feed-unescape` into a simple `feed-update` helper which manages the feed
 comparison and entry extraction (`atom-action`?).
 
 An additional optimization would be to provide a curl wrapper which recognizes
