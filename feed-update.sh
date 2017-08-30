@@ -110,12 +110,21 @@ update_feed() {
             return 1
         fi
 
+        # Extract the entry.
         atom-extract "${entry_name}" < "${new_feed}" \
             > "${feed}/unread/${entry}"
         if [ "$?" -ne 0 ]; then
             printf "%s: extracting entry from %s failed\n" "$0" "${new_feed}" \
                 1>&2
             return 1
+        fi
+
+        # Cache the entry.
+        if [ -x "${feed}/cache" ]; then
+            "${feed}/cache" "${entry}"
+            if [ "$?" -ne 0 ]; then
+                printf "%s: caching entry '%s' failed\n" "$0" "${entry}" 1>&2
+            fi
         fi
     done
 
