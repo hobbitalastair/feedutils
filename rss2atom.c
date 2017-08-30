@@ -21,9 +21,7 @@
 
 #include <expat.h>
 
-#define READBUF_SIZE 4096 /* Size of the read buffer, in bytes */
-#define DATABUF_SIZE 4096 /* Size of the persistent string buffer */
-#define FIELD_SIZE 100 /* Maximum field length */
+#include "config.h"
 
 #ifdef XML_LARGE_SIZE
 #define XML_FMT_INT_MOD "ll"
@@ -483,7 +481,7 @@ void data_handler(void* data, const char* contents, int len) {
             memcpy(&(s->databuf[s->offset]), contents, len);
             s->offset += len;
         } else {
-            fprintf(stderr, "%s: malformed feed: too much data\n", name);
+            fprintf(stderr, "%s: too much data\n", name);
             exit(EXIT_FAILURE);
         }
     }

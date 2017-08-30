@@ -22,8 +22,7 @@
 
 #include <expat.h>
 
-#define READBUF_SIZE 4096 /* Size of the read buffer, in bytes */
-#define DATABUF_SIZE 4096 /* Size of the persistent string buffer */
+#include "config.h"
 
 #ifdef XML_LARGE_SIZE
 #define XML_FMT_INT_MOD "ll"
