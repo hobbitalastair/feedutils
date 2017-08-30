@@ -25,41 +25,8 @@ the utilities, or any scrapers for readers.
 Because XSLT only works on well-formed XML this may imply converting from HTML
 to XML before processing (eg using [tidy](https://github.com/htacg/tidy-html5)).
 
-## Feed format
-
-- Atom feeds are more general, so convert to those...
-- Alternative would be to design a custom feed format and provide convertors
-  to/from
-
-Feeds each have an identifying ID; feed entries also have an identifiying ID.
-
-## Wrapper script
-
-I'm quite happy (probably happier!) adding/removing feeds by editing a file/s.
-So I just need to write a script to do the downloads every so often (once a
-day?), and to run a particular program for each unread file.
-
-# Feed cases
-
-I have four classes of URLs:
-- Comics
-- Computers
-- Modelling
-- Misc (eg DeviantArt, quantum blog, ...)
-
-Comics fall into "custom website" (single image, *generally* cheap to load),
-or tapas.io (pull image from website), or webtoons.com (many images, needs
-special loader/viewer).
-
-Computers are generally purely "custom website" (web browser), but I may need
-to "enqueue" these (can't read and dispose eg software updates), and some
-shouldn't be opened unless I decide that they are sufficiently interesting
-sounding (phoronix and lowendmac).
-
-Modelling is again "custom website" (web browser).
-
-Misc is a mix of "custom website", media (podcasts/images/...) which need custom
-viewers, ...
+Atom feeds are nicer (they have a unique ID!) so convert to that instead of
+supporting RSS.
 
 # Implementation
 
@@ -103,26 +70,10 @@ littering the directories with broken or irrelevant files, creating files with
 bad filenames, executing arbitrary shell code (be careful when dealing with the
 variables!!), dropping or duplicating entries, or worse!
 
-## Design 1
-
-- `rss2atom` for helping the `fetch` executable convert RSS feeds.
-- `atom-exec` for providing access to the contents of an atom entry for the
-  `cache` and `open` executables.
-- `atom-list` for listing the (escaped) entry ids in a feed.
-- `atom-extract` for pulling out a specific entry from a feed.
-- `feed-unescape` for converting an escaped id to the original id.
-
-To simplify things it might be worth combining `atom-list`, `atom-extract`, and
-`feed-unescape` into a simple `feed-update` helper which manages the feed
-comparison and entry extraction (`atom-action`?).
-
-An additional optimization would be to provide a curl wrapper which recognizes
-a 200-code response and instead outputs the existing file.
-
 Care *must* be taken when dealing with the feeds to avoid creating
 vulnerabilities (eg arbitrary code execution).
 
-### ID escaping scheme
+# ID escaping scheme
 
 We need to treat any Atom entry:id values as being at best IRIs and at worst
 malicious. To avoid dealing with nasty values, we define a bijection between

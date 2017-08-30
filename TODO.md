@@ -6,4 +6,8 @@
 - Check escaping code in rss2atom.
 - Implement support for the RSS `<image>` tag.
 - Check the return codes of printf, fprintf, or putc.
+- Implement support for filtering and tagging feeds.
+- Implement support for batching updates (eg only read if the oldest unread
+  is older than a month).
+- Provide a curl wrapper recognizing a 200-code response.
 
