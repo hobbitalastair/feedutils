@@ -1,0 +1,9 @@
+[Unit]
+Description=Timer for feed updates
+
+[Timer]
+Unit=feed.service
+OnUnitInactiveSec=3h
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Update feeds
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/feed-update
+Nice=19
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target
