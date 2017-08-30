@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -114,13 +117,20 @@ void data_handler(void* data, const char* contents, int len) {
 int main(int argc, char** argv) {
     name = __FILE__;
     if (argc > 0) name = argv[0];
-    if (argc <= 1) {
-        fprintf(stderr, "usage: %s <child>\n", name);
+    if (argc <= 2) {
+        fprintf(stderr, "usage: %s <file> <child>\n", name);
         exit(EXIT_FAILURE);
     }
 
     Feed feed;
     feed.tag = ATOM_NONE;
+
+    /* Open the file */
+    int fd = open(argv[1], 0);
+    if (fd < 0) {
+        fprintf(stderr, "%s: open(%s): %s\n", name, argv[1], strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     /* Create the parser for the feed */
     XML_Parser parser = XML_ParserCreate(NULL);
@@ -136,7 +146,7 @@ int main(int argc, char** argv) {
     char buf[READBUF_SIZE];
     ssize_t count = 1; /* Bytes read */
     while (count != 0 || (count == -1 && errno == EINTR)) {
-        count = read(0, buf, sizeof(buf));
+        count = read(fd, buf, sizeof(buf));
         if (count < 0) continue; /* Bail on read error */
         if (XML_Parse(parser, buf, count, count == 0) == XML_STATUS_ERROR) {
             fprintf(stderr, "%s: %s at %" XML_FMT_INT_MOD "u\n", name,
@@ -151,10 +161,11 @@ int main(int argc, char** argv) {
     }
 
     /* Run the child */
-    for (int i = 0; i < argc - 1; i++) {
-        argv[i] = argv[i + 1];
+    for (int i = 0; i < argc - 2; i++) {
+        argv[i] = argv[i + 2];
     }
-    argv[argc - 1] = NULL;
+    argv[argc - 2] = NULL;
+    close(fd);
     execv(argv[0], argv);
     fprintf(stderr, "%s: exec(): %s\n", name, strerror(errno));
     exit(EXIT_FAILURE);
