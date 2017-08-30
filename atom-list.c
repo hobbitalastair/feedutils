@@ -38,13 +38,14 @@ typedef struct {
 } Feed;
 
 void print_id(char* data, int length) {
-    /* Print the id, escaped so that it can be used in a filesystem, with '\0'
+    /* Print the id, escaped so that it can be used in a filesystem, with '\n'
      * as the separator.
      *
      * We assume UNIX filesystem semantics - this disallows forward slashes
      * and nulls. However, we also need to be careful to avoid a '.' or '..';
      * to avoid this we also escape the first character if it is a '.'.
-     * We also disallow empty ids.
+     * We also disallow empty ids, and escape newlines since we use those as
+     * terminators.
      *
      * See notes.md for documentation of the escaping algorithm.
      */
@@ -74,7 +75,7 @@ void print_id(char* data, int length) {
             putc(c, stdout);
         }
     }
-    putc('\0', stdout); /* NULL-terminate the strings */
+    putc('\n', stdout); /* Terminate the strings with a newline */
 }
 
 void start_handler(void* data, const char* element, const char** attributes) {
