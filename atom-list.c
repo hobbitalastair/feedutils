@@ -67,6 +67,9 @@ void print_id(char* data, int length) {
         } else if (c == '/') {
             putc('\\', stdout);
             putc('_', stdout);
+        } else if (c == '\n') {
+            putc('\\', stdout);
+            putc('n', stdout);
         } else {
             putc(c, stdout);
         }

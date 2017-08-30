@@ -133,8 +133,9 @@ To escape an arbitrary string, perform the following per-character tests:
 1. If the character is a `\`, output `\`, `\`.
 2. If the character is a null byte, output `\`, `0`.
 3. If the character is a `/`, output `\`, `_`.
-4. If the character is a `.` and is the first character read, output `\`, `.`.
-5. Otherwise, output the character as-is.
+4. If the character is a `\n`, output `\`, `n`.
+5. If the character is a `.` and is the first character read, output `\`, `.`.
+6. Otherwise, output the character as-is.
 
 To unescape an arbitrary string, perform the following operations, where the
 `escaped` flag is a variable initially unset.
@@ -144,6 +145,7 @@ To unescape an arbitrary string, perform the following operations, where the
   Otherwise, set `escaped`.
 2. If the character is a `0` and `escaped` is set, output `\0`.
 3. If the character is a `_` and `escaped` is set, output `/`.
-4. If the character is a `.` and `escaped` is set, output `.`.
-5. Otherwise, output the character as-is.
+4. If the character is a `n` and `escaped` is set, output `n`.
+5. If the character is a `.` and `escaped` is set, output `.`.
+6. Otherwise, output the character as-is.
 

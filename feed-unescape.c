@@ -29,6 +29,7 @@ int unescape(char* data, int length) {
             char c = data[i];
             if (escaped && c == '0') c = '\0';
             if (escaped && c == '_') c = '/';
+            if (escaped && c == 'n') c = '\n';
             if (escaped && c == '.') c = '.';
             data[new_len] = c;
             new_len++;
