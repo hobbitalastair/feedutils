@@ -75,9 +75,11 @@ update_feed() {
     "${feed}/fetch" > "${new_feed}" 2> "${tmpdir}/output"
     if [ "$?" -ne 0 ]; then
         cat "${tmpdir}/output" 1>&2
+        mv -f "${tmpdir}/output" "${feed}/error.log"
         printf "%s: failed to fetch new feed for '%s'\n" "$0" "${feed}" 1>&2
         return 1
     fi
+    rm -f "${feed}/error.log"
 
     atom-list < "${new_feed}" | LC_ALL="C" sort > "${new_entries}"
     if [ "$?" -ne 0 ]; then
