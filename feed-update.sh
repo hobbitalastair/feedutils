@@ -124,7 +124,7 @@ update_feed() {
 
         # Cache the entry.
         if [ -x "${feed}/cache" ]; then
-            "${feed}/cache" "${entry}"
+            "${feed}/cache" "${feed}/unread/${entry}"
             if [ "$?" -ne 0 ]; then
                 printf "%s: caching entry '%s' failed\n" "$0" "${entry}" 1>&2
             fi

@@ -53,7 +53,7 @@ read_feed() {
 
     for unread in "${feed}/unread/"*; do
         if [ -e "${unread}/entry" ]; then
-            atom-exec "${unread}/entry" "${feed}/open"
+            "${feed}/open" "${unread}"
             if [ "$?" -ne 0 ]; then
                 printf "%s: failed to open %s\n" "$0" "${unread}" 1>&2
             else
