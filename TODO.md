@@ -10,4 +10,8 @@
 - Implement support for batching updates (eg only read if the oldest unread
   is older than a month).
 - Provide a curl wrapper recognizing a 200-code response.
+- Provide some example open, fetch scripts.
+- Allow filtering feed-read and feed-update.
+- Add helpers for detecting old feeds.
+- Remove unparseable feed files.
 
