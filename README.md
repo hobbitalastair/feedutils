@@ -1,4 +1,4 @@
-# atomutils
+# feedutils
 
 A series of utilites for dealing with feeds, aimed mostly at the Atom feed
 format.
