@@ -57,6 +57,7 @@ read_feed() {
             if [ "$?" -ne 0 ]; then
                 printf "%s: failed to open %s\n" "$0" "${unread}" 1>&2
             else
+                rm -rf "${feed}/read/$(basename "${unread}")"
                 mv -f "${unread}" "${feed}/read/"
             fi
         fi
