@@ -52,8 +52,8 @@ read_feed() {
     need_exec "${feed}" "open" || return
 
     for unread in "${feed}/unread/"*; do
-        if [ -e "${unread}" ]; then
-            atom-exec "${unread}" "${feed}/open"
+        if [ -e "${unread}/entry" ]; then
+            atom-exec "${unread}/entry" "${feed}/open"
             if [ "$?" -ne 0 ]; then
                 printf "%s: failed to open %s\n" "$0" "${unread}" 1>&2
             else

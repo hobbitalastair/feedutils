@@ -111,8 +111,9 @@ update_feed() {
         fi
 
         # Extract the entry.
+        mkdir "${feed}/unread/${entry}" && \
         atom-extract "${entry_name}" < "${new_feed}" \
-            > "${feed}/unread/${entry}"
+            > "${feed}/unread/${entry}/entry"
         if [ "$?" -ne 0 ]; then
             printf "%s: extracting entry from %s failed\n" "$0" "${new_feed}" \
                 1>&2
@@ -136,7 +137,7 @@ update_feed() {
         <(cd "${feed}/read/"; printf '%s\n' * | LC_ALL="C" sort) \
         "${new_entries}" |
     while IFS="\n" read -r entry; do
-        rm -f "${feed}/read/${entry}"
+        rm -rf "${feed}/read/${entry}"
     done
 
     tput cuu1
