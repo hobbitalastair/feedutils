@@ -124,8 +124,10 @@ update_feed() {
 
         # Cache the entry.
         if [ -x "${feed}/cache" ]; then
-            "${feed}/cache" "${feed}/unread/${entry}"
+            atom-exec "${feed}/unread/${entry}/entry" \
+                "${feed}/cache" "${feed}/unread/${entry}" 2> "${tmpdir}/output"
             if [ "$?" -ne 0 ]; then
+                cat "${tmpdir}/output" 1>&2
                 printf "%s: caching entry '%s' failed\n" "$0" "${entry}" 1>&2
             fi
         fi
