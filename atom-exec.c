@@ -61,20 +61,31 @@ void start_handler(void* data, const char* element, const char** attributes) {
 
     if (strcmp("title", element) == 0) feed->tag = ATOM_TITLE;
     if (strcmp("link", element) == 0) {
-        feed->tag = ATOM_LINK;
-        /* Link elements use the href attribute to store the actual link */
-        int i = 0;
-        while (attributes[i] != NULL) {
-            if (strcmp("href", attributes[i]) == 0) {
-                feed->len = strlen(attributes[i+1]);
-                if (feed->len >= DATABUF_SIZE) {
-                    fprintf(stderr, "%s: malformed feed: link too large\n",
-                            name);
-                    exit(EXIT_FAILURE);
-                }
-                strncpy(feed->data, attributes[i+1], DATABUF_SIZE);
+        /* Extract the attributes that we care about */
+        const char* href = NULL;
+        const char* rel = NULL;
+        while (*attributes != NULL) {
+            if (strcmp("href", *attributes) == 0) href = *(attributes+1);
+            if (strcmp("rel", *attributes) == 0) rel = *(attributes+1);
+            attributes += 2;
+        }
+
+        /* We only care about rel="alternate" links.
+         *
+         * The Atom spec indicates that if no rel is provided, we should treat
+         * the link as having rel="alternate".
+         * If a different rel is in place, we just ignore the entry (it is
+         * probably a comment feed or similar).
+         */
+        if (rel == NULL || strcmp(rel, "alternate") == 0) {
+            feed->tag = ATOM_LINK;
+            /* Link elements use the href attribute to store the actual link */
+            feed->len = strlen(href);
+            if (feed->len >= DATABUF_SIZE) {
+                fprintf(stderr, "%s: malformed feed: link too large\n", name);
+                exit(EXIT_FAILURE);
             }
-            i += 2;
+            strncpy(feed->data, href, DATABUF_SIZE);
         }
     }
     if (strcmp("content", element) == 0) feed->tag = ATOM_CONTENT;
