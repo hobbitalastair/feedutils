@@ -15,10 +15,9 @@ format.
 `feed-read` and `feed-update` both use a "feed" directory, by default
 `~/.config/feeds/`.
 This contains several subdirectories, each corresponding to a single feed.
-Each feed directory contains an `unread` directory, a `read` directory, a
-`open` executable (the helper program to run when opening the file), and a
-`fetch` executable (the program to run to generate an up-to-date version of
-the feed).
+Each feed directory contains an `entry` directory, a `open` executable (the
+helper program to run when opening the file), and a `fetch` executable (the
+program to run to generate an up-to-date version of the feed).
 Optionally, the feed directory can contain a `cache` executable, which
 pre-fetches interesting data from the entry.
 

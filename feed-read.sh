@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Open each unread feed.
+# Read unread feeds.
 #
 # Author:   Alastair Hughes
 # Contact:  hobbitalastair at yandex dot com
@@ -10,11 +10,6 @@ export PATH="${PATH}:$(dirname "$0")"
 
 if [ ! -d "${FEED_DIR}" ]; then
     printf "%s: feed dir '%s' does not exist\n" "$0" "${FEED_DIR}" 1>&2
-    exit 1
-fi
-
-if [ $# -ne 0 ]; then
-    printf "usage: %s\n" "$0" 1>&2
     exit 1
 fi
 
@@ -33,13 +28,29 @@ need_dir() {
 
 need_exec() {
     # Check that the given executable exists, warning on failure.
-    local feed="$1"
-    local exec="$2"
+    local feed="$(dirname "$1")"
+    local exec="$(basename "$1")"
 
     if [ ! -x "${feed}/${exec}" ]; then
-        printf "%s: feed '%s' has no %s executable\n" "$0" "${feed}" "${exec}" \
+        printf "%s: feed %s has no %s executable\n" "$0" "${feed}" "${exec}" \
             1>&2
         return 1
+    fi
+}
+
+read_entry() {
+    # Open the given entry.
+    local feed="$1"
+    local entry="$2"
+
+    need_exec "${entry}/../../open" || return
+
+    atom-exec "${entry}/entry" \
+        "${feed}/open" "${entry}"
+    if [ "$?" -ne 0 ]; then
+        printf "%s: failed to open %s\n" "$0" "${entry}" 1>&2
+    else
+        touch "${entry}/read"
     fi
 }
 
@@ -47,24 +58,29 @@ read_feed() {
     # Read all unread entries for the feed with the given directory.
     local feed="$1"
 
-    need_dir "${feed}/read/" || return
-    need_dir "${feed}/unread/" || return
-    need_exec "${feed}" "open" || return
+    need_dir "${feed}/entry/" || return
 
-    for unread in "${feed}/unread/"*; do
-        if [ -e "${unread}/entry" ]; then
-            atom-exec "${unread}/entry" \
-                "${feed}/open" "${unread}"
-            if [ "$?" -ne 0 ]; then
-                printf "%s: failed to open %s\n" "$0" "${unread}" 1>&2
-            else
-                rm -rf "${feed}/read/$(basename "${unread}")"
-                mv -f "${unread}" "${feed}/read/"
-            fi
+    for entry in "${feed}/entry/"*; do
+        if [ -f "${entry}/entry" ] && [ ! -f "${entry}/read" ]; then
+            read_entry "${feed}" "${entry}"
         fi
     done
 }
 
-for feed in "${FEED_DIR}/"*; do
-    [ -d "${feed}" ] && read_feed "${feed}"
-done
+if [ "$#" -ne 0 ]; then
+    cd "${FEED_DIR}"
+    for arg in "$@"; do
+        if [ -f "${arg}/entry" ]; then
+            # This is a path to a feed entry to open.
+            read_entry "$(realpath "${arg}/../../")" "${arg}"
+        elif [ -x "${arg}/fetch" ]; then
+            # This is a path to a particular feed; open all unread.
+            read_feed "${arg}"
+        fi
+    done
+else
+    # No feeds given; open all unread.
+    for feed in "${FEED_DIR}/"*; do
+        [ -d "${feed}" ] && read_feed "${feed}"
+    done
+fi

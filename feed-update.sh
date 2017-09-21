@@ -63,8 +63,7 @@ update_feed() {
 
     printf '%s: updating feed %s\n' "$0" "$(basename "${feed}")"
 
-    need_dir "${feed}/read/" || return 1
-    need_dir "${feed}/unread/" || return 1
+    need_dir "${feed}/entry/" || return 1
     need_exec "${feed}" "fetch" || return 1
 
     local new_feed="${tmpdir}/feed"
@@ -102,7 +101,7 @@ update_feed() {
         : > "${old_entries}" # Make an empty file if this is a new feed.
     fi
 
-    # Add any new entries to the unread folder.
+    # Add any new entries.
     LC_ALL="C" comm -23 "${new_entries}" "${old_entries}" |
     while IFS="\n" read -r entry; do
         local entry_name
@@ -113,9 +112,9 @@ update_feed() {
         fi
 
         # Extract the entry.
-        mkdir "${feed}/unread/${entry}" && \
+        mkdir "${feed}/entry/${entry}" && \
         atom-extract "${entry_name}" < "${new_feed}" \
-            > "${feed}/unread/${entry}/entry"
+            > "${feed}/entry/${entry}/entry"
         if [ "$?" -ne 0 ]; then
             printf "%s: extracting entry from %s failed\n" "$0" "${new_feed}" \
                 1>&2
@@ -124,8 +123,8 @@ update_feed() {
 
         # Cache the entry.
         if [ -x "${feed}/cache" ]; then
-            atom-exec "${feed}/unread/${entry}/entry" \
-                "${feed}/cache" "${feed}/unread/${entry}" \
+            atom-exec "${feed}/entry/${entry}/entry" \
+                "${feed}/cache" "${feed}/entry/${entry}" \
                 > "${tmpdir}/output" 2>&1
             if [ "$?" -ne 0 ]; then
                 cat "${tmpdir}/output" 1>&2
@@ -139,10 +138,10 @@ update_feed() {
 
     # Clean up old entries.
     LC_ALL="C" comm -23 \
-        <(cd "${feed}/read/"; printf '%s\n' * | LC_ALL="C" sort) \
+        <(cd "${feed}/entry/"; printf '%s\n' * | LC_ALL="C" sort) \
         "${new_entries}" |
     while IFS="\n" read -r entry; do
-        rm -rf "${feed}/read/${entry}"
+        [ -f "${feed}/entry/${entry}/read" ] && rm -rf "${feed}/entry/${entry}"
     done
 
     tput cuu1
@@ -161,5 +160,3 @@ trap "rm -rf '${tmpdir}'" EXIT
 for feed in "${FEED_DIR}/"*; do
     [ -d "${feed}" ] && update_feed "${feed}"
 done
-
-exit 0

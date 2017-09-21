@@ -40,30 +40,28 @@ Wrapper interface:
 
 Known feeds are stored as subdirectories of `~/.config/feeds`, using the format
 `~/.config/feeds/name`. This contains a `fetch` executable, `open` executable,
-a `cache` executable, an `unread` directory, and a `read` directory.
-The `read` and `unread` directories contain a bunch of files each
-corresponding to a feed entry, where the filename is the normalized id of the
-entry, and the contents of the file is piped to the `open` executable to load
-the corresponding entry.
+a `cache` executable, and an `entry` directory.
+The `entry` directory contains a bunch of files each corresponding to a feed
+entry, where the filename is the normalized id of the entry, and the contents
+of the file is piped to the `open` executable to load the corresponding entry.
 The `fetch` executable is expected to output a feed file, which can be
 processed and compared with the existing `feed` file to generate new unread
 entries and remove `read` entries that are no longer in the feed.
 
 `feed-read` would iterate through all of the subdirectories of
-`~/.config/feeds/` and execute the `open` program for each entry in the
-`unread` directory, waiting for the `open` program to finish before continuing.
-If the `open` program exits with status 0, then the entry is moved from the
-`unread` directory to the `read` directory.
+`~/.config/feeds/` and execute the `open` program for each unread entry,
+waiting for the `open` program to finish before continuing.
+If the `open` program exits with status 0, then the entry is marked as read by
+creating a `read` file in the entries directory.
 
 `feed-update` would iterate through all of the subdirectories of
 `~/.config/feeds/`. For each feed directory, it would execute the `fetch`
 executable, storing the output in a `feed.XXXX` temporary file. Then the old
 `feed` and the new `feed.XXXX` files would be compared, and the new entries
-extracted into the `unread` directory. Also, any entries in the `read`
-directory which aren't in the new feed should be removed. For each new entry,
-it would also run the `cache` executable with the new entry as input.
-Finally, the `feed.XXXX` file would be moved over the top of the old `feed`
-file.
+extracted into the `entry` directory. Also, any read entries which aren't in
+the new feed should be removed. For each new entry, it would also run the
+`cache` executable with the new entry as input. Finally, the `feed.XXXX` file
+would be moved over the top of the old `feed` file.
 Some care is required here to deal with multiple update operations happening at
 once, a broken new feed file, and other forms of operations failing, to avoid
 littering the directories with broken or irrelevant files, creating files with
