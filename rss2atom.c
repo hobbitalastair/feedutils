@@ -9,6 +9,9 @@
  * Contact: hobbitalastair at yandex dot com
  */
 
+/* Need _XOPEN_SOURCE for strptime */
+#define _XOPEN_SOURCE
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -147,24 +151,77 @@ void print_escaped(char* string, bool attribute) {
     }
 }
 
-void print_updated(char* rss_datetime) {
-    /* Print the time of the last update, using the given rss_datetime if
+struct tm* parse_rfc822(char* name, char* rss_datetime) {
+    /* Attempt to parse the given date and time.
+     *
+     * Return NULL on failure, otherwise a pointer to a static tm struct.
+     */
+
+    static struct tm datetime;
+
+    if (rss_datetime == NULL) return NULL;
+
+    /* The RFC-822 time specification includes an optional day of the week,
+     * and some feeds use 4 digit years, so try parsing several specifications.
+     */
+    char* zone = strptime(rss_datetime, "%a , %d %b %y %T ", &datetime);
+    if (zone == NULL) {
+        zone = strptime(rss_datetime, "%d %b %y %T ", &datetime);
+    }
+    if (zone == NULL) {
+        zone = strptime(rss_datetime, "%a , %d %b %Y %T ", &datetime);
+    }
+    if (zone == NULL) {
+        zone = strptime(rss_datetime, "%d %b %Y %T ", &datetime);
+    }
+
+    if (zone == NULL) {
+        fprintf(stderr, "%s: malformed feed: invalid date/time '%s'\n", name,
+                rss_datetime);
+        return NULL;
+    }
+    return &datetime;
+}
+
+void print_updated(struct tm* datetime) {
+    /* Print the time of the last update, using the given datetime if
      * nonnull, or otherwise the current time.
      *
      * We need a "last updated" field entry in an atom-friendly format
-     * (ISO.8601.1988). Unfortunately specifying the date/time is slightly
-     * tricky, so we cheat here and just use a placeholder.
-     * RSS uses a different date/time format (RFC-822), so we would need to
-     * parse that and convert it to something atom-friendly if we wanted to
-     * properly use the RSS-provided fields.
-     * use the lastBuildDate or pubDate fields properly.
+     * (RFC-3339); RSS uses a different date/time format (RFC-822), so we
+     * need to parse that and convert between the two.
      *
-     * TODO: Implement proper date/time parsing and usage.
+     * TODO: Implement time zone parsing and printing.
+     *       We currently ignore timezones, since parsing them is tricky (%z
+     *       is non-standard) and displaying them is difficult, and assume
+     *       UTC instead. This probably isn't a big deal since we are largely
+     *       interested in times relative to other entries in the feed, which
+     *       probably use the same timezone, but would be nice to have.
      */
-    if (rss_datetime == NULL) rss_datetime = "placeholder date/time";
-    printf("\t\t<updated>");
-    print_escaped(rss_datetime, false);
-    printf("</updated>\n");
+
+    if (datetime == NULL) {
+        time_t current_time = time(NULL);
+        datetime = localtime(&current_time);
+    }
+
+    /* RFC-3339 formatted timestamps have a maximum length of around 26
+     * characters (not including fractional seconds).
+     * Use a 32 character buffer here, which should cover any miscounts I've
+     * made.
+     */
+    char atom_datetime[32] = {0};
+    if (datetime != NULL) {
+        if (strftime(atom_datetime, sizeof(atom_datetime),
+                    "%Y-%m-%dT%TZ", datetime) == 0) {
+            atom_datetime[0] = '\0';
+        }
+    }
+
+    if (atom_datetime[0] != 0) {
+        printf("\t\t<updated>");
+        print_escaped(atom_datetime, false);
+        printf("</updated>\n");
+    }
 }
 
 void print_id(char* id) {
@@ -241,7 +298,8 @@ void print_channel(RSS_Channel* channel) {
 
     char* updated = channel->pubDate;
     if (updated == NULL) updated = channel->lastBuildDate;
-    print_updated(updated);
+    struct tm* rss_datetime = parse_rfc822(name, updated);
+    print_updated(rss_datetime);
 
     print_category(channel->category);
 
@@ -299,7 +357,8 @@ void print_item(RSS_Item* item) {
     print_escaped(author, false);
     printf("</name></author>\n");
 
-    print_updated(item->pubDate);
+    struct tm* rss_datetime = parse_rfc822(name, item->pubDate);
+    print_updated(rss_datetime);
 
     print_category(item->category);
 
