@@ -121,6 +121,15 @@ update_feed() {
             return 1
         fi
 
+        # Extract the entry date/time.
+        atom-timestamp < "${feed}/entry/${entry}/entry" \
+            > "${feed}/entry/${entry}/timestamp"
+        if [ "$?" -ne 0 ]; then
+            printf "%s: retrieving the timestamp from %s failed\n" "$0" \
+                "${entry}" 1>&2
+            return 1
+        fi
+
         # Cache the entry.
         if [ -x "${feed}/cache" ]; then
             atom-exec "${feed}/entry/${entry}/entry" \

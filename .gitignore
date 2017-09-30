@@ -1,6 +1,7 @@
 atom-exec
 atom-extract
 atom-list
+atom-timestamp
 feed-read
 feed-unescape
 feed-update
