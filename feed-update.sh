@@ -15,11 +15,6 @@ if [ ! -d "${FEED_DIR}" ]; then
     exit 1
 fi
 
-if [ $# -ne 0 ]; then
-    printf "usage: %s\n" "$0" 1>&2
-    exit 1
-fi
-
 need_dir() {
     # Create a directory if it doesn't already exist, warning on failure.
     local new_dir="$1"
@@ -165,7 +160,19 @@ if [ "$?" -ne 0 ]; then
 fi
 trap "rm -rf '${tmpdir}'" EXIT
 
-
-for feed in "${FEED_DIR}/"*; do
-    [ -d "${feed}" ] && update_feed "${feed}"
-done
+if [ "$#" -ne 0 ]; then
+    cd "${FEED_DIR}"
+    for arg in "$@"; do
+        if [ -d "${arg}" ]; then
+            # This is a path to a particular feed; open all unread.
+            update_feed "${arg}"
+        else
+            printf '%s: no such feed dir %s\n' "$0" "${arg}" 1>&2
+        fi
+    done
+else
+    # No feeds given; update all.
+    for feed in "${FEED_DIR}/"*; do
+        [ -d "${feed}" ] && update_feed "${feed}"
+    done
+fi
