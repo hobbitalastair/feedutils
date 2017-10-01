@@ -13,5 +13,4 @@
 - Provide some example open, fetch scripts.
 - Add helpers for detecting old feeds.
 - Remove unparseable feed files.
-- Order unread entries by date, falling back to name if needed.
 

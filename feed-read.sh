@@ -60,10 +60,27 @@ read_feed() {
 
     need_dir "${feed}/entry/" || return
 
+    # Preserve stdin and stdout.
+    exec 3>&0
+    exec 4>&1
+
     for entry in "${feed}/entry/"*; do
         if [ -f "${entry}/entry" ] && [ ! -f "${entry}/read" ]; then
-            read_entry "${feed}" "${entry}"
+            if [ -f "${entry}/timestamp" ]; then
+                # We sort on timestamp, id.
+                # Neither parts of the key should contain newlines or '/', so
+                # use those as separators.
+                printf '%s/%s\n' "$(cat "${entry}/timestamp" 2> /dev/null)" \
+                    "${entry}"
+            else
+                # Fallback if we don't have a timestamp.
+                read_entry "${feed}" "${entry}" <&3 >&4
+            fi
         fi
+    done | sort | \
+    while IFS="$(printf '/\n')" read -r timestamp entry; do
+        # Open the ordered entries.
+        read_entry "${feed}" "${entry}" <&3 >&4
     done
 }
 
