@@ -43,10 +43,9 @@ read_entry() {
     local feed="$1"
     local entry="$2"
 
-    need_exec "${entry}/../../open" || return
+    need_exec "${feed}/open" || return 1
 
-    atom-exec "${entry}/entry" \
-        "${feed}/open" "${entry}"
+    atom-exec "${entry}/entry" "${feed}/open" "${entry}"
     if [ "$?" -ne 0 ]; then
         printf "%s: failed to open %s\n" "$0" "${entry}" 1>&2
     else
@@ -58,7 +57,7 @@ read_feed() {
     # Read all unread entries for the feed with the given directory.
     local feed="$1"
 
-    need_dir "${feed}/entry/" || return
+    need_dir "${feed}/entry/" || return 1
 
     # Preserve stdin and stdout.
     exec 3>&0
