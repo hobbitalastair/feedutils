@@ -94,7 +94,7 @@ To unescape an arbitrary string, perform the following operations, where the
   Otherwise, set `escaped`.
 2. If the character is a `0` and `escaped` is set, output `\0`.
 3. If the character is a `_` and `escaped` is set, output `/`.
-4. If the character is a `n` and `escaped` is set, output `n`.
+4. If the character is a `n` and `escaped` is set, output `\n`.
 5. If the character is a `.` and `escaped` is set, output `.`.
 6. Otherwise, output the character as-is.
 
