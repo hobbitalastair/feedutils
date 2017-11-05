@@ -260,7 +260,7 @@ void print_channel(RSS_Channel* channel) {
     char* title = channel->title;
     if (title == NULL) {
         fprintf(stderr, "%s: malformed feed: no channel title\n", name);
-        exit(EXIT_FAILURE);
+        title = "";
     }
     printf("\t\t<title>");
     print_escaped(title, false);
