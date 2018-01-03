@@ -15,8 +15,8 @@ if [ ! -d "${FEED_DIR}" ]; then
     exit 1
 fi
 
-if [ "$#" -lt 1 ]; then
-    printf 'usage: %s <name> <rss>\n' 1>&2
+if [ "$#" -ne 2 ]; then
+    printf 'usage: %s <name> <rss>\n' "$0" 1>&2
     exit 1
 fi
 name="$1"
