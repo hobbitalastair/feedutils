@@ -59,6 +59,11 @@ read_feed() {
 
     need_dir "${feed}/entry/" || return 1
 
+    if [ -f "${feed}/error.log" ]; then
+        printf "%s: %s has errors:\n" "$0" "$(basename "${feed}")" 1>&2
+        cat < "${feed}/error.log" 1>&2
+    fi
+
     # Preserve stdin and stdout.
     exec 3>&0
     exec 4>&1
