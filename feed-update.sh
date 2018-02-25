@@ -40,18 +40,6 @@ need_exec() {
     fi
 }
 
-feed_tmp() {
-    # Create a new per-feed temporary file, warning on failure.
-    local file="$1/${2}"
-
-    mktemp "${file}"
-    if [ "$?" -ne 0 ]; then
-        printf "%s: failed to create temporary file '%s'\n" "$0" "${file}" \
-            1>&2
-        return 1
-    fi
-}
-
 update_feed() {
     # Update the feed with the given directory.
     local feed="$1"
