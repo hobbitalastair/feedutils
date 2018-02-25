@@ -63,7 +63,6 @@ update_feed() {
     need_exec "${feed}" "fetch" || return 1
 
     local new_feed="${tmpdir}/feed"
-    local old_feed="${feed}/feed"
     local new_entries="${tmpdir}/new-entries"
     local old_entries="${tmpdir}/old-entries"
 
@@ -84,19 +83,10 @@ update_feed() {
         printf "%s: new feed file contains no entries\n" "$0" 1>&2
         return 1
     fi
-    if [ -e "${old_feed}" ]; then
-        atom-list < "${old_feed}" | LC_ALL="C" sort > "${old_entries}"
-        if [ "$?" -ne 0 ]; then
-            printf "%s: failed to list entries in feed '%s'\n" "$0" "${feed}" \
-                1>&2
-            return 1
-        fi
-    else
-        : > "${old_entries}" # Make an empty file if this is a new feed.
-    fi
 
     # Add any new entries.
-    LC_ALL="C" comm -23 "${new_entries}" "${old_entries}" |
+    LC_ALL="C" comm -23 "${new_entries}" \
+        <(cd "${feed}/entry/"; printf '%s\n' * | LC_ALL="C" sort) |
     while IFS="\n" read -r entry; do
         local entry_name
         entry_name="$(feed-unescape "${entry}")"
@@ -135,9 +125,6 @@ update_feed() {
             fi
         fi
     done
-
-    # Move the new feed over the old one.
-    mv -f "${new_feed}" "${old_feed}"
 
     # Clean up old entries.
     LC_ALL="C" comm -23 \
