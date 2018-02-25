@@ -40,6 +40,19 @@ need_exec() {
     fi
 }
 
+log_update_feed() {
+    # Wrapper for update_feed which also logs the output.
+    local log="${tmpdir}/error.log"
+    local feed="$1"
+    rm -f "${log}"
+    update_feed "${feed}" 2> >(tee -a "${log}")
+    if [ "$?" -ne 0 ]; then
+        mv "${tmpdir}/error.log" "${feed}/error.log"
+    else
+        rm -f "${feed}/error.log"
+    fi
+}
+
 update_feed() {
     # Update the feed with the given directory.
     local feed="$1"
@@ -57,11 +70,9 @@ update_feed() {
     "${feed}/fetch" > "${new_feed}" 2> "${tmpdir}/output"
     if [ "$?" -ne 0 ]; then
         cat "${tmpdir}/output" 1>&2
-        mv -f "${tmpdir}/output" "${feed}/error.log"
         printf "%s: failed to fetch new feed for '%s'\n" "$0" "${feed}" 1>&2
         return 1
     fi
-    rm -f "${feed}/error.log"
 
     atom-list < "${new_feed}" | LC_ALL="C" sort > "${new_entries}"
     if [ "$?" -ne 0 ]; then
@@ -153,7 +164,7 @@ if [ "$#" -ne 0 ]; then
     for arg in "$@"; do
         if [ -d "${arg}" ]; then
             # This is a path to a particular feed; open all unread.
-            update_feed "${arg}"
+            log_update_feed "${arg}"
         else
             printf '%s: no such feed dir %s\n' "$0" "${arg}" 1>&2
         fi
@@ -161,6 +172,6 @@ if [ "$#" -ne 0 ]; then
 else
     # No feeds given; update all.
     for feed in "${FEED_DIR}/"*; do
-        [ -d "${feed}" ] && update_feed "${feed}"
+        [ -d "${feed}" ] && log_update_feed "${feed}"
     done
 fi
