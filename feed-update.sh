@@ -133,9 +133,6 @@ update_feed() {
     while IFS="\n" read -r entry; do
         [ -f "${feed}/entry/${entry}/read" ] && rm -rf "${feed}/entry/${entry}"
     done
-
-    tput cuu1
-    tput el
 }
 
 # Create our (global) temporary directory.
