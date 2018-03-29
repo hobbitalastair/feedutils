@@ -131,7 +131,10 @@ update_feed() {
         <(cd "${feed}/entry/"; printf '%s\n' * | LC_ALL="C" sort) \
         "${new_entries}" |
     while IFS="\n" read -r entry; do
-        [ -f "${feed}/entry/${entry}/read" ] && rm -rf "${feed}/entry/${entry}"
+        if [ -f "${feed}/entry/${entry}/read" ] || \
+            [ ! -f "${feed}/entry/${entry}/entry" ]; then
+            rm -rf "${feed}/entry/${entry}"
+        fi
     done
 }
 
