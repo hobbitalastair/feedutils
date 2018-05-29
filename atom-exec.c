@@ -47,6 +47,20 @@ typedef struct {
     char data[DATABUF_SIZE];
 } Feed;
 
+bool attribute_is(const char* name, const char* attribute) {
+    /* Return true if the given attribute name matches the given name, minus
+     * any namespace prefix.
+     */
+
+    const char* name_start = attribute;
+    while (*attribute != '\0') {
+        if (*attribute == ':') name_start = attribute + 1;
+        attribute++;
+    }
+
+    return strcmp(name, name_start) == 0;
+}
+
 void start_handler(void* data, const char* element, const char** attributes) {
     /* Handle an element start tag */
     Feed* feed = (Feed*)data;
@@ -65,19 +79,21 @@ void start_handler(void* data, const char* element, const char** attributes) {
         const char* href = NULL;
         const char* rel = NULL;
         while (*attributes != NULL) {
-            if (strcmp("href", *attributes) == 0) href = *(attributes+1);
-            if (strcmp("rel", *attributes) == 0) rel = *(attributes+1);
+            if (attribute_is("href", *attributes)) href = *(attributes+1);
+            if (attribute_is("rel", *attributes)) rel = *(attributes+1);
             attributes += 2;
         }
 
-        /* We only care about rel="alternate" links.
-         *
-         * The Atom spec indicates that if no rel is provided, we should treat
-         * the link as having rel="alternate".
-         * If a different rel is in place, we just ignore the entry (it is
-         * probably a comment feed or similar).
-         */
-        if (rel == NULL || strcmp(rel, "alternate") == 0) {
+        if (href == NULL) {
+            fprintf(stderr, "%s: malformed feed: link with no href\n", name);
+        } else if (rel == NULL || strcmp(rel, "alternate") == 0) {
+            /* We only care about rel="alternate" links.
+             *
+             * The Atom spec indicates that if no rel is provided, we should treat
+             * the link as having rel="alternate".
+             * If a different rel is in place, we just ignore the entry (it is
+             * probably a comment feed or similar).
+             */
             feed->tag = ATOM_LINK;
             /* Link elements use the href attribute to store the actual link */
             feed->len = strlen(href);
@@ -132,7 +148,7 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    Feed feed;
+    Feed feed = {0};
     feed.tag = ATOM_NONE;
 
     /* Open the file */
