@@ -465,7 +465,7 @@ void start_handler(void* data, const char* element, const char** attributes) {
         if (s->field_ptr == NULL) {
             goto unhandled_tag;
         }
-        strncpy(s->field, element, FIELD_SIZE);
+        strncpy(s->field, element, FIELD_SIZE-1);
     } else {
         goto unhandled_tag;
     }
