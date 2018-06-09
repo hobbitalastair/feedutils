@@ -14,3 +14,7 @@
 - Add helpers for detecting old feeds.
 - Remove unparseable feed files.
 
+- .config is the wrong place to store everything
+  (use .local/share for entries and status, .cache for cached downloads).
+- Implement a few different feed read methods to batch some updates or tagging
+  or similar instead.
