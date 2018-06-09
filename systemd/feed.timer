@@ -3,7 +3,8 @@ Description=Timer for feed updates
 
 [Timer]
 Unit=feed.service
-OnUnitInactiveSec=3h
+OnCalendar=daily
+Persistent=true
 
 [Install]
 WantedBy=timers.target
