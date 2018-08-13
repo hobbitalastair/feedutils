@@ -554,11 +554,14 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    State s;
+    State s = {0};
     s.element = RSS_TYPE_NONE;
     s.have_channel = false;
     s.field[0] = '\0';
     s.field_ptr = NULL;
+    s.offset = 0;
+    s.databuf[0] = '\0';
+    s.unknown_depth = 0;
 
     /* Create the parser for the feed */
     XML_Parser parser = XML_ParserCreate(NULL);
