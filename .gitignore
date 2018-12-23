@@ -3,8 +3,10 @@ atom-extract
 atom-list
 atom-timestamp
 feed-addrss
+feed-addweb
 feed-delete
 feed-read
+feed-unread
 feed-unescape
 feed-update
 rss2atom
