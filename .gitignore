@@ -4,6 +4,7 @@ atom-list
 atom-timestamp
 feed-addrss
 feed-addweb
+feed-daily
 feed-delete
 feed-read
 feed-unread

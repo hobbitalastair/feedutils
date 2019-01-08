@@ -6,7 +6,7 @@ LIBS = `pkg-config --libs expat`
 CC = gcc
 CFLAGS = -Wall -Werror -O2 -g
 OBJS = atom-exec atom-extract atom-list atom-timestamp \
-       feed-addrss feed-addweb \
+       feed-addrss feed-addweb feed-daily \
        feed-delete feed-read feed-unescape feed-update feed-unread \
        rss2atom snow2feed
 SYSTEMD = systemd/feed.service systemd/feed.timer
