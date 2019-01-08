@@ -15,8 +15,11 @@ if [ ! -d "${FEED_DIR}" ]; then
     exit 1
 fi
 
-if [ "$#" -ne 0 ]; then
-    printf 'usage: %s\n' "$0" 1>&2
+if [ "$#" -eq 1 ] && [ "$1" == '-s' ]; then
+    "$0" | sed s:/.*:: | sort | uniq -c | sort -n
+    exit "$?"
+elif [ "$#" -ne 0 ]; then
+    printf 'usage: %s [-s]\n' "$0" 1>&2
     exit 1
 fi
 
