@@ -22,7 +22,11 @@ _feed_list_unread()
     cur="${COMP_WORDS[COMP_CWORD]}"
     local IFS=$'\n'
     compopt -o filenames
-    COMPREPLY=( $(compgen -W "$(for entry in "${FEED_DIR}"/*/entry/*; do [ ! -f "${entry}/read" ] && printf '%s\n' "${entry}" | rev | cut -d/ -f3 | rev; done)" -- $cur) )
+    COMPREPLY=( $(compgen -W "$(cd "${FEED_DIR}"; \
+        for entry in "$cur"*/entry/*; do \
+            [ ! -f "${entry}/read" ] && printf '%s\n' "${entry}"; \
+        done | cut -d/ -f1\
+        )" -- $cur) )
     return 0
 }
 
