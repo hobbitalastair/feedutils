@@ -23,8 +23,9 @@ elif [ "$#" -ne 0 ]; then
     exit 1
 fi
 
-for entry in "${FEED_DIR}"/*/entry/*; do
+cd "${FEED_DIR}"
+for entry in */entry/*; do
     if [ ! -f "${entry}/read" ]; then
-        printf '%s\n' "${entry}" | rev | cut -d/ -f1-3 | rev
+        printf '%s\n' "${entry}"
     fi
 done
