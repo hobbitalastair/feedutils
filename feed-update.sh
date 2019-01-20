@@ -73,7 +73,7 @@ update_feed() {
         return 1
     fi
 
-    atom-list < "${new_feed}" | LC_ALL="C" sort > "${new_entries}"
+    atom-list < "${new_feed}" | LC_ALL="C" sort -u > "${new_entries}"
     if [ "$?" -ne 0 ]; then
         printf "%s: failed to list new entries\n" "$0" 1>&2
         return 1
