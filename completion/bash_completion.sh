@@ -8,7 +8,9 @@ _feed_list()
     cur="${COMP_WORDS[COMP_CWORD]}"
     local IFS=$'\n'
     compopt -o filenames
-    COMPREPLY=( $(compgen -W "$(printf '%s\n' "${FEED_DIR}"/*/ | rev | cut -d/ -f2 | rev)" -- $cur) )
+    COMPREPLY=( $(compgen -W "$( \
+        shopt -s nullglob; \
+        printf '%s\n' "${FEED_DIR}"/*/ | rev | cut -d/ -f2 | rev)" -- $cur) )
     return 0
 }
 
@@ -23,6 +25,7 @@ _feed_list_unread()
     local IFS=$'\n'
     compopt -o filenames
     COMPREPLY=( $(compgen -W "$(cd "${FEED_DIR}"; \
+        shopt -s nullglob; \
         for entry in "$cur"*/entry/*; do \
             [ ! -f "${entry}/read" ] && printf '%s\n' "${entry}"; \
         done | cut -d/ -f1\
