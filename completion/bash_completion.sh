@@ -36,3 +36,4 @@ _feed_list_unread()
 complete -F _feed_list feed-delete
 complete -F _feed_list_unread feed-read
 complete -F _feed_list feed-update
+complete -F _feed_list feed-markasread
