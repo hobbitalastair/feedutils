@@ -101,7 +101,7 @@ void start_handler(void* data, const char* element, const char** attributes) {
                 fprintf(stderr, "%s: malformed feed: link too large\n", name);
                 exit(EXIT_FAILURE);
             }
-            strncpy(feed->data, href, DATABUF_SIZE);
+            strncpy(feed->data, href, DATABUF_SIZE - 1);
         }
     }
     if (strcmp("content", element) == 0) feed->tag = ATOM_CONTENT;
