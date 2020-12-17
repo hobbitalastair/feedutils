@@ -5,7 +5,7 @@ SYSTEMDUSERDIR := ${PREFIX}/lib/systemd/user
 LIBS = `pkg-config --libs expat`
 CC = gcc
 CFLAGS = -Wall -Werror -O2 -g
-OBJS = atom-exec atom-extract atom-list atom-timestamp \
+OBJS = atom-exec atom-extract atom-list atom-timestamp atom-merge \
        feed-addrss feed-addweb feed-daily feed-markasread \
        feed-delete feed-read feed-unescape feed-update feed-unread \
        rss2atom snow2feed
