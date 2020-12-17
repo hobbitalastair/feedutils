@@ -102,6 +102,7 @@ void start_handler(void* data, const char* element, const char** attributes) {
                 exit(EXIT_FAILURE);
             }
             strncpy(feed->data, href, DATABUF_SIZE - 1);
+            feed->data[DATABUF_SIZE - 1] = '\0';
         }
     }
     if (strcmp("content", element) == 0) feed->tag = ATOM_CONTENT;
