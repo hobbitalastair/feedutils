@@ -20,15 +20,10 @@ exec xsltproc \
     <xsl:param name="id" select="*"/>
     <xsl:output method="xml" omit-xml-declaration="no"/>
 
-    <xsl:template match="/">
-        <!-- Iterate through the entries, selecting the entries that we are
-             interested in (have a matching id) -->
-        <xsl:for-each select="atom:feed/atom:entry">
-            <xsl:if test="atom:id=\$id">
-                <xsl:copy-of select="."/>
-            </xsl:if>
-        </xsl:for-each>
+    <xsl:template match="atom:feed">
+        <xsl:copy-of select="atom:entry[atom:id=\$id][position()=1]"/>
     </xsl:template>
+
 </xsl:stylesheet>
 EOF
 
