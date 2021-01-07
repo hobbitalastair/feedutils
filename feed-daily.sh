@@ -13,9 +13,11 @@ if [ ! -d "${FEED_DIR}" ]; then
     exit 1
 fi
 
-if [ "$#" -eq 0 ]; then
-    # No feeds given; open all unread.
-    for feed in "${FEED_DIR}/"*; do
-        [ -d "${feed}" ] && [ -f "${feed}/daily" ] && feed-read "${feed}"
-    done
+if [ "$#" -ne 0 ]; then
+    printf 'usage: %s\n' "$0" 1>&2
+    exit 1
 fi
+
+for feed in "${FEED_DIR}/"*; do
+    [ -d "${feed}" ] && [ -f "${feed}/daily" ] && feed-read "${feed}"
+done
