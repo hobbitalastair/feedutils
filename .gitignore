@@ -1,8 +1,3 @@
-atom-exec
-atom-extract
-atom-list
-atom-timestamp
-atom-merge
 feed-addrss
 feed-addweb
 feed-daily
@@ -10,7 +5,9 @@ feed-delete
 feed-markasread
 feed-read
 feed-unread
-feed-unescape
 feed-update
 rss2atom
-snow2feed
+
+# Rust specific files
+Cargo.lock
+target/

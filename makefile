@@ -5,10 +5,9 @@ SYSTEMDUSERDIR := ${PREFIX}/lib/systemd/user
 LIBS = `pkg-config --libs expat`
 CC = gcc
 CFLAGS = -Wall -Werror -O2 -g
-OBJS = atom-exec atom-extract atom-list atom-timestamp atom-merge \
-       feed-addrss feed-addweb feed-daily feed-markasread \
-       feed-delete feed-read feed-unescape feed-update feed-unread \
-       rss2atom snow2feed
+OBJS = feed-addrss feed-addweb feed-daily feed-markasread \
+       feed-delete feed-read feed-update feed-unread \
+       rss2atom
 SYSTEMD = systemd/feed.service systemd/feed.timer
 COMPLETION = completion/bash_completion.sh
 
