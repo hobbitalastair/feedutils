@@ -3,6 +3,30 @@ name = "feedutils"
 version = "1.0.0"
 edition = "2021"
 
+[lib]
+name = "feedutil"
+path = "src/feedutil.rs"
+
+[[bin]]
+name = "feed-update"
+path = "src/feed-update.rs"
+
+[[bin]]
+name = "feed-read"
+path = "src/feed-read.rs"
+
+[[bin]]
+name = "feed-unread"
+path = "src/feed-unread.rs"
+
+[[bin]]
+name = "feed-markasread"
+path = "src/feed-markasread.rs"
+
+[[bin]]
+name = "feed-delete"
+path = "src/feed-delete.rs"
+
 [dependencies]
 chrono = "0.4"
 thiserror = "1.0"

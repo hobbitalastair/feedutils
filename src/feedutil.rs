@@ -8,7 +8,7 @@ use std::io::{BufWriter, Write, BufReader, BufRead};
 use std::fs;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus, exit};
+use std::process::{Command, ExitStatus};
 use std::thread;
 use std::time;
 
@@ -20,13 +20,13 @@ use xml::reader::{EventReader, XmlEvent};
 const ENTRY_DATABASE_HEADER: &str = "feed\tid\tupdated\ttitle\tlink\tread\n";
 
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
-struct Entry {
-    feed: String,
-    id: String,
-    title: String,
-    updated: String,
-    link: String,
-    read: bool,
+pub struct Entry {
+    pub feed: String,
+    pub id: String,
+    pub title: String,
+    pub updated: String,
+    pub link: String,
+    pub read: bool,
 }
 
 fn sanitize(data: String) -> String {
@@ -303,7 +303,7 @@ fn open_lockfile(filename: PathBuf) -> io::Result<fs::File> {
 }
 
 #[derive(Error, Debug)]
-enum DatabaseReadError {
+pub enum DatabaseReadError {
     #[error("{source}: {path}")]
     IoError {
         source: io::Error,
@@ -367,7 +367,7 @@ fn write_entries(f: &mut fs::File, entries: &Vec<Entry>) -> io::Result<()> {
 }
 
 #[derive(Error, Debug)]
-enum ModifyDatabaseError {
+pub enum ModifyDatabaseError {
     #[error("Unable to lock database: {source}: {path}")]
     LockCreateError {
         source: io::Error,
@@ -385,7 +385,7 @@ enum ModifyDatabaseError {
     },
 }
 
-fn modify_database<F>(modifier: F, database_path: PathBuf) -> Result<(), ModifyDatabaseError>
+pub fn modify_database<F>(modifier: F, database_path: PathBuf) -> Result<(), ModifyDatabaseError>
     where F: FnOnce(Vec<Entry>) -> Vec<Entry>
 {
     // We assume that database_path here has a filename, which should be true since it always comes
@@ -463,12 +463,12 @@ fn merge_feed(feed_name: String, feed_entries: Vec<Entry>, database_entries: Vec
 }
 
 #[derive(Error, Debug)]
-enum DatabasePathError {
+pub enum DatabasePathError {
     #[error("No env var set for database path")]
     NoEnvVar,
 }
 
-fn get_database_path() -> Result<PathBuf, DatabasePathError> {
+pub fn get_database_path() -> Result<PathBuf, DatabasePathError> {
     // Database path; check possible settings env vars in sequence.
     // Does not check if the directory or file actually exists.
     
@@ -503,14 +503,14 @@ fn get_feed_config_dir() -> Option<PathBuf> {
 }
 
 #[derive(Error, Debug)]
-enum FeedDirError {
+pub enum FeedDirError {
     #[error("Cannot read feed config")]
     CannotReadConfigDir,
     #[error("Feed does not exist")]
     FeedDoesNotExist,
 }
 
-fn get_feed_dir(feed_name: String) -> Result<PathBuf, FeedDirError> {
+pub fn get_feed_dir(feed_name: String) -> Result<PathBuf, FeedDirError> {
     let config_dir = get_feed_config_dir().ok_or(FeedDirError::CannotReadConfigDir)?;
     fs::metadata(config_dir.clone()).map_err(|_| FeedDirError::CannotReadConfigDir)?;
     let feed_dir = config_dir.join(feed_name);
@@ -518,7 +518,7 @@ fn get_feed_dir(feed_name: String) -> Result<PathBuf, FeedDirError> {
     return Ok(feed_dir);
 }
 
-fn get_all_feed_names() -> io::Result<Vec<String>> {
+pub fn get_all_feed_names() -> io::Result<Vec<String>> {
     let mut feeds = Vec::new();
     let config_dir = get_feed_config_dir().ok_or(io::ErrorKind::Other)?;
     for entry in fs::read_dir(config_dir)? {
@@ -535,7 +535,7 @@ fn get_all_feed_names() -> io::Result<Vec<String>> {
 }
 
 #[derive(Error, Debug)]
-enum UpdateError {
+pub enum UpdateError {
     #[error(transparent)]
     DatabasePathError(#[from] DatabasePathError),
     #[error(transparent)]
@@ -556,7 +556,7 @@ enum UpdateError {
     },
 }
 
-fn update(feed_name: String) -> Result<(), UpdateError> {
+pub fn update(feed_name: String) -> Result<(), UpdateError> {
     let feed_dir_path = get_feed_dir(feed_name.clone())?;
 
     let exec_path = feed_dir_path.clone().join("fetch");
@@ -585,7 +585,7 @@ fn update(feed_name: String) -> Result<(), UpdateError> {
 }
 
 #[derive(Error, Debug)]
-enum MarkEntryAsReadError {
+pub enum MarkEntryAsReadError {
     #[error(transparent)]
     DatabasePathError(#[from] DatabasePathError),
     #[error(transparent)]
@@ -610,7 +610,7 @@ fn mark_entry_as_read(feed_name: String, entry_id: String) -> Result<(), MarkEnt
 }
 
 #[derive(Error, Debug)]
-enum EntryReadError {
+pub enum EntryReadError {
     #[error(transparent)]
     FeedDirError(#[from] FeedDirError),
     #[error(transparent)]
@@ -624,7 +624,7 @@ enum EntryReadError {
     },
 }
 
-fn read_entry(feed_name: String, entry: Entry) -> Result<(), EntryReadError> {
+pub fn read_entry(feed_name: String, entry: Entry) -> Result<(), EntryReadError> {
     let feed_dir_path = get_feed_dir(feed_name.clone())?;
 
     let exec_path = feed_dir_path.clone().join("open");
@@ -638,14 +638,14 @@ fn read_entry(feed_name: String, entry: Entry) -> Result<(), EntryReadError> {
 }
 
 #[derive(Error, Debug)]
-enum GetEntriesError {
+pub enum GetEntriesError {
     #[error(transparent)]
     DatabasePathError(#[from] DatabasePathError),
     #[error(transparent)]
     DatabaseReadError(#[from] DatabaseReadError),
 }
 
-fn get_feed_entries(feed_name: String) -> Result<Vec<Entry>, GetEntriesError> {
+pub fn get_feed_entries(feed_name: String) -> Result<Vec<Entry>, GetEntriesError> {
     let database_path = get_database_path()
         .map_err(|e| GetEntriesError::DatabasePathError(e))?;
     let entries = read_entries(database_path)
@@ -664,7 +664,7 @@ fn get_feed_entries(feed_name: String) -> Result<Vec<Entry>, GetEntriesError> {
     return Ok(feed_entries);
 }
 
-fn count_unread_entries() -> Result<HashMap<String, u32>, GetEntriesError> {
+pub fn count_unread_entries() -> Result<HashMap<String, u32>, GetEntriesError> {
     let database_path = get_database_path()
         .map_err(|e| GetEntriesError::DatabasePathError(e))?;
     let entries = read_entries(database_path)
@@ -684,197 +684,3 @@ fn count_unread_entries() -> Result<HashMap<String, u32>, GetEntriesError> {
     return Ok(feed_entries);
 }
 
-fn exec_feed_update(args: Vec<String>) {
-    let feeds = match args.len() {
-        1 => {
-            match get_all_feed_names() {
-                Ok(feeds) => feeds,
-                Err(e) => {
-                    eprintln!("Cannot list feeds: {}", e);
-                    exit(1);
-                }
-            }
-        },
-        2 => vec![args[1].clone()],
-        _ => {
-            eprintln!("usage: feed-update [<feed>]");
-            exit(1);
-        }
-    };
-
-    let mut ok = true;
-    for feed_name in feeds {
-        println!("Updating feed {}", feed_name);
-        let res = update(feed_name);
-        match res {
-            Err(e) => {
-                eprintln!("{}", e);
-                ok = false;
-            },
-            _ => {}
-        }
-    }
-    if !ok {
-        exit(1);
-    }
-}
-
-fn exec_feed_unread(args: Vec<String>) {
-    if args.len() == 1 {
-        let entry_counts = match count_unread_entries() {
-            Ok(entry_counts) => entry_counts,
-            Err(e) => {
-                eprintln!("{}", e);
-                exit(1);
-            },
-        };
-        let mut feed_and_unread = Vec::from_iter(entry_counts.into_iter());
-        feed_and_unread.sort_by(|a, b| (a.1, &a.0).cmp(&(b.1, &b.0)));
-        for (feed_name, unread_count) in feed_and_unread {
-            println!("{: >4} {}", unread_count, feed_name);
-        }
-    } else {
-        eprintln!("usage: feed-unread");
-        exit(1);
-    }
-}
-
-fn exec_feed_read(args: Vec<String>) {
-    if args.len() >= 2 {
-        let mut ok = true;
-        for feed_name in args.into_iter().skip(1) {
-            if let Err(e) = get_feed_dir(feed_name.clone()) {
-                eprintln!("{}: {}", e, feed_name.clone());
-                ok = false;
-                continue;
-            }
-
-            let entries = match get_feed_entries(feed_name.clone()) {
-                Ok(entries) => entries,
-                Err(e) => {
-                    eprintln!("{}", e);
-                    exit(1);
-                },
-            };
-            for entry in entries {
-                if !entry.read {
-                    if let Err(e) = read_entry(feed_name.clone(), entry) {
-                        eprintln!("{}", e);
-                        ok = false;
-                    }
-                }
-            }
-        }
-        if !ok {
-            exit(1);
-        }
-    } else {
-        eprintln!("usage: feed-read <feed> [<feed> ...]");
-        exit(1);
-    }
-}
-
-fn exec_feed_markasread(args: Vec<String>) {
-    if args.len() == 2 {
-        let feed_name = args[1].clone();
-        if let Err(e) = get_feed_dir(feed_name.clone()) {
-            eprintln!("{}: {}", e, feed_name.clone());
-            exit(1);
-        }
-
-        let database_path = match get_database_path() {
-            Ok(path) => path,
-            Err(e) => {
-                eprintln!("{}", e);
-                exit(1);
-            },
-        };
-
-        let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
-            let mut modified_entries: Vec<Entry> = Vec::new();
-            for mut entry in entries {
-                if entry.feed == feed_name {
-                    entry.read = true;
-                }
-                modified_entries.push(entry);
-            }
-            return modified_entries;
-        };
-        if let Err(e) = modify_database(modifier, database_path) {
-            eprintln!("Failed to mark {} as read: {}", feed_name.clone(), e);
-            exit(1);
-        }
-    } else {
-        eprintln!("usage: feed-markasread <feed>");
-        exit(1);
-    }
-}
-
-fn exec_feed_delete(args: Vec<String>) {
-    if args.len() == 2 {
-        let feed_name = args[1].clone();
-
-        let feed_dir = match get_feed_dir(feed_name.clone()) {
-            Ok(feed_dir) => feed_dir,
-            Err(e) => {
-                eprintln!("{}: {}", e, feed_name.clone());
-                exit(1);
-            },
-        };
-
-        let database_path = match get_database_path() {
-            Ok(path) => path,
-            Err(e) => {
-                eprintln!("{}", e);
-                exit(1);
-            },
-        };
-
-        let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
-            let mut modified_entries: Vec<Entry> = Vec::new();
-            for entry in entries {
-                if entry.feed != feed_name {
-                    modified_entries.push(entry);
-                }
-            }
-            return modified_entries;
-        };
-        if let Err(e) = modify_database(modifier, database_path) {
-            eprintln!("Failed to delete entries: {}", e);
-            exit(1);
-        }
-
-        if let Err(e) = fs::remove_dir_all(feed_dir) {
-            eprintln!("Failed to delete feed configuration: {}", e);
-            exit(1);
-        }
-    } else {
-        eprintln!("usage: feed-delete <feed>");
-    }
-}
-
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() == 0 {
-        eprintln!("{} must have the first exec arg as the executable name", env!("CARGO_PKG_NAME"));
-        std::process::exit(1);
-    }
-
-    let executable_name = std::path::Path::new(&args[0]).file_name().and_then(std::ffi::OsStr::to_str);
-    match executable_name {
-        Some("feed-update") => exec_feed_update(args),
-        Some("feed-unread") => exec_feed_unread(args),
-        Some("feed-read") => exec_feed_read(args),
-        Some("feed-markasread") => exec_feed_markasread(args),
-        Some("feed-delete") => exec_feed_delete(args),
-        Some(executable_name) => {
-            eprintln!("Executable name {} not recognized", executable_name);
-            std::process::exit(1);
-        }
-        None => {
-            eprintln!("Executable name {} not recognized", args[0]);
-            std::process::exit(1);
-        }
-    }
-}
