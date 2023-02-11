@@ -1,3 +1,4 @@
+extern crate url;
 extern crate xml;
 
 use std::collections::HashMap;
@@ -10,6 +11,8 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus, exit};
 use std::thread;
 use std::time;
+
+use url::Url;
 use thiserror::Error;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -61,8 +64,15 @@ fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
                 if name.local_name == "link" {
                     for attr in attributes {
                         if attr.name.local_name == "href" {
-                            // FIXME: Should sanitize this as an actual URL
-                            link = Some(sanitize(attr.value));
+                            let url = sanitize(attr.value);
+                            match Url::parse(&url) {
+                                Ok(_) => {
+                                    link = Some(url);
+                                },
+                                Err(e) => {
+                                    eprintln!("Ignoring invalid URL: {e}");
+                                },
+                            }
                         }
                     }
                 }
@@ -172,8 +182,6 @@ fn read_entries(filename: PathBuf) -> Result<Vec<Entry>, DatabaseReadError> {
         match line {
             Ok(line) => {
                 let mut fields = line.split("\t");
-                // FIXME: Likely should sanitize field values and/or return a better
-                //        error message if something went wrong
                 let entry = Entry {
                     feed: fields.next().ok_or(DatabaseReadError::MissingField{ field: "feed".to_string() })?.to_string(),
                     id: fields.next().ok_or(DatabaseReadError::MissingField{ field: "id".to_string() })?.to_string(),
@@ -200,7 +208,6 @@ fn write_entries(f: &mut fs::File, entries: &Vec<Entry>) -> io::Result<()> {
 
     for e in entries {
         // Can safely use tabs and newlines as delimiters as removed earlier
-        // FIXME: Should perhaps assert that here for safety?
         let line = [
             e.feed.clone(),
             e.id.clone(),
@@ -598,7 +605,6 @@ fn exec_feed_read(args: Vec<String>) {
                 continue;
             }
 
-            // FIXME: Also print saved update errors?
             let entries = match get_feed_entries(feed_name.clone()) {
                 Ok(entries) => entries,
                 Err(e) => {
@@ -674,6 +680,7 @@ fn main() {
         Some("feed-unread") => exec_feed_unread(args),
         Some("feed-read") => exec_feed_read(args),
         Some("feed-markasread") => exec_feed_markasread(args),
+        // FIXME: Need a new feed-delete, which cleans up the database as well
         Some(executable_name) => {
             eprintln!("Executable name {} not recognized", executable_name);
             std::process::exit(1);
