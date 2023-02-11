@@ -6,8 +6,6 @@ feed-markasread
 feed-read
 feed-unread
 feed-update
-rss2atom
 
 # Rust specific files
-Cargo.lock
 target/
