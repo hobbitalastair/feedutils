@@ -12,8 +12,9 @@ use std::process::{Command, ExitStatus, exit};
 use std::thread;
 use std::time;
 
-use url::Url;
+use chrono::DateTime;
 use thiserror::Error;
+use url::Url;
 use xml::reader::{EventReader, XmlEvent};
 
 const ENTRY_DATABASE_HEADER: &str = "feed\tid\tupdated\ttitle\tlink\tread\n";
@@ -45,7 +46,106 @@ fn sanitize(data: String) -> String {
     return sanitized_data;
 }
 
-fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
+fn handle_rss_pub_date(pub_date: Option<String>) -> String {
+    // RSS publication date is both optional and often not proper RFC2822.
+    // In order to be generous, try to parse it but fall back where that isn't
+    // possible.
+
+    match pub_date {
+        Some(pub_date) => {
+            let mut rfc2822_pub_date = pub_date;
+            // Some feeds have improper RFC2822 dates, specifying UTC not UT.
+            // Replace with GMT - we don't care about the timezone.
+            rfc2822_pub_date = rfc2822_pub_date.replace("UTC", "GMT");
+            let updated = DateTime::parse_from_rfc2822(&rfc2822_pub_date);
+            match updated {
+                Ok(updated) => updated.to_rfc3339(),
+                Err(_) => {
+                    // Couldn't parse, fall back to current datetime.
+                    chrono::offset::Utc::now().to_rfc3339()
+                },
+            }
+        },
+        None => {
+            // Strictly speaking the publication date is optional... fall back
+            // to the current datetime.
+            chrono::offset::Utc::now().to_rfc3339()
+        },
+    }
+}
+
+fn parse_rss<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) -> Vec<Entry> {
+    // Turn an RSS-like XML feed into a vector of entries
+    // Data is attempted to be sanitized
+
+    let mut pending_data: Option<String> = None;
+    let mut id: Option<String> = None;
+    let mut title: Option<String> = None;
+    let mut pub_date: Option<String> = None;
+    let mut link: Option<String> = None;
+
+    let mut entries: Vec<Entry> = Vec::new();
+
+    for e in parser {
+        match e {
+            Ok(XmlEvent::EndElement { name }) => {
+                match name.local_name.as_str() {
+                    "guid" => {
+                        id = pending_data.take();
+                    }
+                    "title" => {
+                        title = pending_data.take();
+                    }
+                    "pubDate" => {
+                        pub_date = pending_data.take();
+                    }
+                    "link" => {
+                        link = pending_data.take();
+                    }
+                    "item" => {
+                        if link.is_none() {
+                            eprintln!("Ignoring incomplete entry, missing link field");
+                            continue;
+                        }
+                        if id.is_none() {
+                            // Fallback to the link if no GUID is specified
+                            id = Some(link.clone().unwrap());
+                        }
+                        if title.is_none() {
+                            eprintln!("Ignoring entry as missing title field: {}", id.take().unwrap());
+                            continue;
+                        }
+
+                        let entry = Entry {
+                            feed: feed.clone(),
+                            id: id.take().unwrap(),
+                            title: title.take().unwrap(),
+                            updated: handle_rss_pub_date(pub_date.take()),
+                            link: link.take().unwrap(),
+                            read: false,
+                        };
+                        entries.push(entry);
+                    }
+                    _ => {}
+                }
+            }
+            Ok(XmlEvent::CData(data)) => {
+                pending_data = Some(sanitize(data));
+            }
+            Ok(XmlEvent::Characters(data)) => {
+                pending_data = Some(sanitize(data));
+            }
+            Err(e) => {
+                eprintln!("Error parsing XML: {}", e);
+                break;
+            }
+            _ => {}
+        }
+    }
+    return entries;
+}
+
+fn parse_atom<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) -> Vec<Entry> {
     // Turn an Atom-like XML feed into a vector of entries
     // Data is attempted to be sanitized
 
@@ -57,7 +157,6 @@ fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
 
     let mut entries: Vec<Entry> = Vec::new();
 
-    let parser = EventReader::new(reader);
     for e in parser {
         match e {
             Ok(XmlEvent::StartElement { name, attributes, .. }) => {
@@ -126,6 +225,36 @@ fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
         }
     }
     return entries;
+}
+
+fn parse_feed<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
+    // Turn an XML feed into a vector of entries.
+    // Format is attempted to be autodetected, either Atom or RSS.
+    // Data is attempted to be sanitized.
+
+    let mut parser = EventReader::new(reader).into_iter();
+    while let Some(e) = parser.next() {
+        match e {
+            Ok(XmlEvent::StartElement { name, .. }) => {
+                if name.local_name == "rss" {
+                    // Probably an RSS feed
+                    return parse_rss(parser, feed);
+                }
+                if name.local_name == "feed" {
+                    // Probably an Atom feed
+                    return parse_atom(parser, feed);
+                }
+            },
+            Err(e) => {
+                eprintln!("Error parsing XML: {}", e);
+                break;
+            },
+            _ => {},
+        }
+    }
+
+    eprintln!("Doesn't seem to be either an Atom or an RSS feed?");
+    return Vec::new();
 }
 
 fn open_lockfile(filename: PathBuf) -> io::Result<fs::File> {
@@ -431,7 +560,7 @@ fn update(feed_name: String) -> Result<(), UpdateError> {
         let _ = fs::remove_file(error_path);
     }
 
-    let feed_entries = read_atom(output.stdout.as_slice(), &feed_name);
+    let feed_entries = parse_feed(output.stdout.as_slice(), &feed_name);
     let merge = |entries: Vec<Entry>| -> Vec<Entry> {
         return merge_feed(feed_name, feed_entries, entries);
     };

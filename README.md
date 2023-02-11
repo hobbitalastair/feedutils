@@ -1,7 +1,6 @@
 # feedutils
 
-A series of utilites for dealing with feeds, aimed mostly at the Atom feed
-format.
+A series of utilites for dealing with feeds.
 
 - `feed-read` - open all the unread entries.
 - `feed-update` - update all the feeds.
@@ -9,7 +8,6 @@ format.
 - `feed-addatom` - add a new atom feed.
 - `feed-addrss` - add a new rss feed.
 - `feed-delete` - delete an existing feed.
-- `rss2atom` - attempt to convert from RSS to Atom.
 
 `feed-read` and `feed-update` both use a "feed" directory, by default
 `~/.config/feeds/`.
