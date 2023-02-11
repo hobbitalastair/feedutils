@@ -441,7 +441,9 @@ fn get_feed_entries(feed_name: String) -> Vec<Entry> {
         }
     }
 
-    feed_entries.sort();
+    // Sort in date order, falling back to ID, so that when reading
+    // entries the oldest is opened first.
+    feed_entries.sort_by(|a, b| (&a.updated, &a.id).cmp(&(&b.updated, &b.id)));
     return feed_entries;
 }
 
