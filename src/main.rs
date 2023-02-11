@@ -8,6 +8,8 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, exit};
+use std::thread;
+use std::time;
 use thiserror::Error;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -117,12 +119,33 @@ fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
 }
 
 fn open_lockfile(filename: String) -> io::Result<fs::File> {
-    // FIXME: Retry on failure, with a delay in case another program is writing
+    // Attempt to acquire a lockfile
+    // Will block until it exists, or the attempt times out
 
-    let f = OpenOptions::new().write(true)
-                              .create_new(true)
-                              .open(filename);
-    return f;
+    let mut delay = time::Duration::from_millis(50);
+    let timeout = time::Duration::from_millis(2000); // 2s seems more than long enough
+
+    loop {
+        let result = OpenOptions::new().write(true)
+                                       .create_new(true)
+                                       .open(filename.clone());
+        match result {
+            Ok(f) => return Ok(f),
+            Err(e) => {
+                if e.kind() != io::ErrorKind::AlreadyExists {
+                    return Err(e);
+                } else if delay >= timeout {
+                    // Timed out - since delays double each time, so far we've
+                    // waited just under `delay` time (using triangle formula).
+                    return Err(e);
+                } else {
+                    thread::sleep(delay);
+                    delay *= 2;
+                }
+            }
+        }
+
+    }
 }
 
 #[derive(Error, Debug)]
