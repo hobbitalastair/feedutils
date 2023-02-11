@@ -550,38 +550,6 @@ fn exec_feed_markasread(args: Vec<String>) {
     }
 }
 
-fn exec_feed_config(args: Vec<String>) {
-    const USAGE: &str = "usage: feed-config <database_file | feed_config_dir>";
-
-    if args.len() != 2 {
-        eprintln!("{}", USAGE);
-        exit(1);
-    }
-
-    match args[1].as_str() {
-        "database_file" => {
-            println!("{}", get_database_path());
-        }
-        "feed_config_dir" => {
-            let dir = get_feed_config_dir();
-            match dir {
-                Some(path) => {
-                    println!("{}", path.to_string_lossy());
-                }
-                _ => {
-                    eprintln!("Unable to find feed configuration directory");
-                    exit(1);
-                }
-            }
-        }
-        _ => {
-            eprintln!("Unknown config string {}", args[1]);
-            eprintln!("{}", USAGE);
-            exit(1);
-        }
-    }
-}
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -596,7 +564,6 @@ fn main() {
         Some("feed-unread") => exec_feed_unread(args),
         Some("feed-read") => exec_feed_read(args),
         Some("feed-markasread") => exec_feed_markasread(args),
-        Some("feed-config") => exec_feed_config(args),
         Some(executable_name) => {
             eprintln!("Executable name {} not recognized", executable_name);
             std::process::exit(1);
