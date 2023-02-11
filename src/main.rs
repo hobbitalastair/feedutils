@@ -88,6 +88,15 @@ fn parse_rss<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) ->
 
     for e in parser {
         match e {
+            Ok(XmlEvent::StartElement { name, .. }) => {
+                pending_data = None;
+                if name.local_name == "item" {
+                    id = None;
+                    title = None;
+                    pub_date = None;
+                    link = None;
+                }
+            }
             Ok(XmlEvent::EndElement { name }) => {
                 match name.local_name.as_str() {
                     "guid" => {
@@ -112,8 +121,8 @@ fn parse_rss<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) ->
                             id = Some(link.clone().unwrap());
                         }
                         if title.is_none() {
-                            eprintln!("Ignoring entry as missing title field: {}", id.take().unwrap());
-                            continue;
+                            // Empty title is not great but OK; ignore
+                            title = Some("Untitled".to_string());
                         }
 
                         let entry = Entry {
@@ -160,6 +169,7 @@ fn parse_atom<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) -
     for e in parser {
         match e {
             Ok(XmlEvent::StartElement { name, attributes, .. }) => {
+                pending_data = None;
                 if name.local_name == "link" {
                     for attr in attributes {
                         if attr.name.local_name == "href" {
@@ -174,6 +184,11 @@ fn parse_atom<R: std::io::Read>(parser: xml::reader::Events<R>, feed: &String) -
                             }
                         }
                     }
+                } else if name.local_name == "entry" {
+                    id = None;
+                    title = None;
+                    updated = None;
+                    link = None;
                 }
             }
             Ok(XmlEvent::EndElement { name }) => {
