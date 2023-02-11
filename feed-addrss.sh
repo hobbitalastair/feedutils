@@ -30,7 +30,5 @@ printf '#!/usr/bin/env sh\n' >> fetch
 printf "curl -L -o - '%s' | rss2atom\n" "${rss}" >> fetch
 chmod +x fetch
 feed-update "${name}"
-for i in entry/*; do
-    touch "$i/read"
-done
+feed-markasread "${name}"
 printf 'Added feed %s\n' "${name}"

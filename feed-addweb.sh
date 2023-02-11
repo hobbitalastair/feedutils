@@ -42,7 +42,5 @@ EOF
 chmod +x fetch
 
 feed-update "${name}"
-for i in entry/*; do
-    touch "$i/read"
-done
+feed-markasread "${name}"
 printf 'Added feed %s\n' "${name}"
