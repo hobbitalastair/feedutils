@@ -1,7 +1,7 @@
 extern crate xml;
-extern crate dirs;
 
 use std::collections::HashMap;
+use std::env;
 use std::io;
 use std::io::{BufWriter, Write, BufReader, BufRead};
 use std::fs;
@@ -118,7 +118,7 @@ fn read_atom<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
     return entries;
 }
 
-fn open_lockfile(filename: String) -> io::Result<fs::File> {
+fn open_lockfile(filename: PathBuf) -> io::Result<fs::File> {
     // Attempt to acquire a lockfile
     // Will block until it exists, or the attempt times out
 
@@ -150,16 +150,20 @@ fn open_lockfile(filename: String) -> io::Result<fs::File> {
 
 #[derive(Error, Debug)]
 enum DatabaseReadError {
-    #[error("IO error")]
-    IoError(#[from] io::Error),
+    #[error("{source}: {path}")]
+    IoError {
+        source: io::Error,
+        path: PathBuf,
+    },
     #[error("Missing {field} field, ignoring entry")]
     MissingField {
         field: String,
     },
 }
 
-fn read_entries(filename: String) -> Result<Vec<Entry>, DatabaseReadError> {
-    let f = OpenOptions::new().read(true).open(filename)?;
+fn read_entries(filename: PathBuf) -> Result<Vec<Entry>, DatabaseReadError> {
+    let f = OpenOptions::new().read(true).open(&filename)
+            .map_err(|e| DatabaseReadError::IoError{ source: e, path: filename.clone() })?;
     let reader = BufReader::new(f);
 
     let mut entries: Vec<Entry> = Vec::new();
@@ -181,7 +185,7 @@ fn read_entries(filename: String) -> Result<Vec<Entry>, DatabaseReadError> {
                 entries.push(entry);
             },
             Err(e) => {
-                return Err(DatabaseReadError::IoError(e));
+                return Err(DatabaseReadError::IoError{ source: e, path: filename.clone() });
             }
         }
     }
@@ -196,7 +200,7 @@ fn write_entries(f: &mut fs::File, entries: &Vec<Entry>) -> io::Result<()> {
 
     for e in entries {
         // Can safely use tabs and newlines as delimiters as removed earlier
-        // TODO: Should perhaps assert that here for safety?
+        // FIXME: Should perhaps assert that here for safety?
         let line = [
             e.feed.clone(),
             e.id.clone(),
@@ -216,7 +220,7 @@ enum ModifyDatabaseError {
     #[error("Unable to lock database: {source}: {path}")]
     LockCreateError {
         source: io::Error,
-        path: String,
+        path: PathBuf,
     },
     #[error("Database read error: {source}")]
     ReadError {
@@ -225,17 +229,24 @@ enum ModifyDatabaseError {
     #[error("Unable to {operation} database: {source}: {path}")]
     WriteError {
         source: io::Error,
-        path: String,
+        path: PathBuf,
         operation: String,
     },
 }
 
-fn modify_database<F>(modifier: F, filename: String) -> Result<(), ModifyDatabaseError>
+fn modify_database<F>(modifier: F, database_path: PathBuf) -> Result<(), ModifyDatabaseError>
     where F: FnOnce(Vec<Entry>) -> Vec<Entry>
 {
-    let lockfilename = filename.clone() + ".lock";
-    let mut lockfile = open_lockfile(lockfilename.clone())
-                        .map_err(|e| ModifyDatabaseError::LockCreateError{ source: e, path: lockfilename.clone() })?;
+    // We assume that database_path here has a filename, which should be true since it always comes
+    // from get_database_path... but in that case maybe we should wrap it into here instead of
+    // getting it as an argument?
+    let mut lock_file_name = database_path.file_name().unwrap().to_os_string();
+    lock_file_name.push(std::ffi::OsStr::new(".lock"));
+    let mut lockfile_path = database_path.clone();
+    lockfile_path.set_file_name(lock_file_name);
+
+    let mut lockfile = open_lockfile(lockfile_path.clone())
+                        .map_err(|e| ModifyDatabaseError::LockCreateError{ source: e, path: lockfile_path.clone() })?;
 
     // We need to delete the lockfile on failure!
     let cleanup_file = |e, path| -> ModifyDatabaseError {
@@ -245,23 +256,23 @@ fn modify_database<F>(modifier: F, filename: String) -> Result<(), ModifyDatabas
         e
     };
 
-    let entries = read_entries(filename.clone())
+    let entries = read_entries(database_path.clone())
                     .map_err(|e| ModifyDatabaseError::ReadError{ source: e })
-                    .map_err(|e| cleanup_file(e, lockfilename.clone()))?;
+                    .map_err(|e| cleanup_file(e, lockfile_path.clone()))?;
 
     let modified_entries = modifier(entries);
 
     write_entries(&mut lockfile, &modified_entries)
-        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfilename.clone(), operation: "write".to_string() })
-        .map_err(|e| cleanup_file(e, lockfilename.clone()))?;
+        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfile_path.clone(), operation: "write".to_string() })
+        .map_err(|e| cleanup_file(e, lockfile_path.clone()))?;
 
     lockfile.sync_all()
-        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfilename.clone(), operation: "sync".to_string() })
-        .map_err(|e| cleanup_file(e, lockfilename.clone()))?;
+        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfile_path.clone(), operation: "sync".to_string() })
+        .map_err(|e| cleanup_file(e, lockfile_path.clone()))?;
 
-    fs::rename(lockfilename.clone(), filename)
-        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfilename.clone(), operation: "replace".to_string() })
-        .map_err(|e| cleanup_file(e, lockfilename.clone()))?;
+    fs::rename(lockfile_path.clone(), database_path)
+        .map_err(|e| ModifyDatabaseError::WriteError{ source: e, path: lockfile_path.clone(), operation: "replace".to_string() })
+        .map_err(|e| cleanup_file(e, lockfile_path.clone()))?;
 
     return Ok(());
 }
@@ -300,13 +311,44 @@ fn merge_feed(feed_name: String, feed_entries: Vec<Entry>, database_entries: Vec
     return modified_database_entries;
 }
 
-fn get_database_path() -> String {
-    // FIXME: Implement using dirs
-    return "test.tsv".to_string();
+#[derive(Error, Debug)]
+enum DatabasePathError {
+    #[error("No env var set for database path")]
+    NoEnvVar,
+}
+
+fn get_database_path() -> Result<PathBuf, DatabasePathError> {
+    // Database path; check possible settings env vars in sequence.
+    // Does not check if the directory or file actually exists.
+    
+    if let Some(path) = env::var_os("FEEDUTILS_DB") {
+        return Ok(PathBuf::from(path));
+    }
+    if let Some(path) = env::var_os("XDG_DATA_HOME") {
+        return Ok(PathBuf::from(path).join("feedutils.tsv"));
+    }
+    if let Some(path) = env::var_os("HOME") {
+        return Ok(PathBuf::from(path).join(".local/share/feedutils.tsv"));
+    }
+
+    return Err(DatabasePathError::NoEnvVar);
 }
 
 fn get_feed_config_dir() -> Option<PathBuf> {
-    return dirs::config_dir().map(|mut path| { path.push("feeds"); path });
+    // Feed configuration directory path; check possible settings env vars in sequence.
+    // Does not check if the directory actually exists.
+
+    if let Some(path) = env::var_os("FEEDUTILS_CONFIGDIR") {
+        return Some(PathBuf::from(path));
+    }
+    if let Some(path) = env::var_os("XDG_CONFIG_HOME") {
+        return Some(PathBuf::from(path).join("feeds"));
+    }
+    if let Some(path) = env::var_os("HOME") {
+        return Some(PathBuf::from(path).join(".config/feeds"));
+    }
+
+    return None;
 }
 
 #[derive(Error, Debug)]
@@ -344,6 +386,8 @@ fn get_all_feed_names() -> io::Result<Vec<String>> {
 #[derive(Error, Debug)]
 enum UpdateError {
     #[error(transparent)]
+    DatabasePathError(#[from] DatabasePathError),
+    #[error(transparent)]
     FeedDirError(#[from] FeedDirError),
     #[error("Failed to launch fetch executable: {source}: {path}")]
     ExecError {
@@ -363,7 +407,6 @@ enum UpdateError {
 
 fn update(feed_name: String) -> Result<(), UpdateError> {
     let feed_dir_path = get_feed_dir(feed_name.clone())?;
-    // FIXME: Should do some error checking that this directory actually exists?
 
     let exec_path = feed_dir_path.clone().join("fetch");
     let error_path = feed_dir_path.join("error.log");
@@ -385,11 +428,20 @@ fn update(feed_name: String) -> Result<(), UpdateError> {
     let merge = |entries: Vec<Entry>| -> Vec<Entry> {
         return merge_feed(feed_name, feed_entries, entries);
     };
-    return modify_database(merge, get_database_path())
+    let database_path = get_database_path().map_err(|e| UpdateError::DatabasePathError(e))?;
+    return modify_database(merge, database_path)
         .map_err(|e| UpdateError::DatabaseError{ source: e });
 }
 
-fn mark_entry_as_read(feed_name: String, entry_id: String) -> Result<(), ModifyDatabaseError> {
+#[derive(Error, Debug)]
+enum MarkEntryAsReadError {
+    #[error(transparent)]
+    DatabasePathError(#[from] DatabasePathError),
+    #[error(transparent)]
+    ModifyDatabaseError(#[from] ModifyDatabaseError),
+}
+
+fn mark_entry_as_read(feed_name: String, entry_id: String) -> Result<(), MarkEntryAsReadError> {
     let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
         let mut modified_entries: Vec<Entry> = Vec::new();
         for mut entry in entries {
@@ -400,7 +452,10 @@ fn mark_entry_as_read(feed_name: String, entry_id: String) -> Result<(), ModifyD
         }
         return modified_entries;
     };
-    return modify_database(modifier, get_database_path());
+    let database_path = get_database_path()
+                        .map_err(|e| MarkEntryAsReadError::DatabasePathError(e))?;
+    return modify_database(modifier, database_path)
+           .map_err(|e| MarkEntryAsReadError::ModifyDatabaseError(e));
 }
 
 #[derive(Error, Debug)]
@@ -408,7 +463,7 @@ enum EntryReadError {
     #[error(transparent)]
     IoError(#[from] io::Error),
     #[error(transparent)]
-    ModifyDatabaseError(#[from] ModifyDatabaseError),
+    MarkEntryAsReadError(#[from] MarkEntryAsReadError),
 }
 
 fn entry_read(entry: Entry) -> Result<(), EntryReadError> {
@@ -422,17 +477,22 @@ fn entry_read(entry: Entry) -> Result<(), EntryReadError> {
         return Ok(());
     }
     
-    return mark_entry_as_read(entry.feed, entry.id).map_err(|e| EntryReadError::ModifyDatabaseError(e));
+    return mark_entry_as_read(entry.feed, entry.id).map_err(|e| EntryReadError::MarkEntryAsReadError(e));
 }
 
-fn get_feed_entries(feed_name: String) -> Vec<Entry> {
-    let entries = match read_entries(get_database_path()) {
-        Err(e) => {
-            eprintln!("Unable to read from database: {}", e);
-            exit(1);
-        }
-        Ok(entries) => entries,
-    };
+#[derive(Error, Debug)]
+enum GetEntriesError {
+    #[error(transparent)]
+    DatabasePathError(#[from] DatabasePathError),
+    #[error(transparent)]
+    DatabaseReadError(#[from] DatabaseReadError),
+}
+
+fn get_feed_entries(feed_name: String) -> Result<Vec<Entry>, GetEntriesError> {
+    let database_path = get_database_path()
+        .map_err(|e| GetEntriesError::DatabasePathError(e))?;
+    let entries = read_entries(database_path)
+        .map_err(|e| GetEntriesError::DatabaseReadError(e))?;
 
     let mut feed_entries = Vec::new();
     for entry in entries {
@@ -444,17 +504,14 @@ fn get_feed_entries(feed_name: String) -> Vec<Entry> {
     // Sort in date order, falling back to ID, so that when reading
     // entries the oldest is opened first.
     feed_entries.sort_by(|a, b| (&a.updated, &a.id).cmp(&(&b.updated, &b.id)));
-    return feed_entries;
+    return Ok(feed_entries);
 }
 
-fn count_unread_entries() -> HashMap<String, u32> {
-    let entries = match read_entries(get_database_path()) {
-        Err(e) => {
-            eprintln!("Unable to read from database: {}", e);
-            exit(1);
-        }
-        Ok(entries) => entries,
-    };
+fn count_unread_entries() -> Result<HashMap<String, u32>, GetEntriesError> {
+    let database_path = get_database_path()
+        .map_err(|e| GetEntriesError::DatabasePathError(e))?;
+    let entries = read_entries(database_path)
+        .map_err(|e| GetEntriesError::DatabaseReadError(e))?;
 
     let mut feed_entries: HashMap<String, u32> = HashMap::new();
     for entry in entries {
@@ -467,7 +524,7 @@ fn count_unread_entries() -> HashMap<String, u32> {
         }
     }
 
-    return feed_entries;
+    return Ok(feed_entries);
 }
 
 fn exec_feed_update(args: Vec<String>) {
@@ -507,7 +564,14 @@ fn exec_feed_update(args: Vec<String>) {
 
 fn exec_feed_unread(args: Vec<String>) {
     if args.len() == 1 {
-        let mut feed_and_unread = Vec::from_iter(count_unread_entries().into_iter());
+        let entry_counts = match count_unread_entries() {
+            Ok(entry_counts) => entry_counts,
+            Err(e) => {
+                eprintln!("{}", e);
+                exit(1);
+            },
+        };
+        let mut feed_and_unread = Vec::from_iter(entry_counts.into_iter());
         feed_and_unread.sort_by(|a, b| (a.1, &a.0).cmp(&(b.1, &b.0)));
         for (feed_name, unread_count) in feed_and_unread {
             println!("{: >4} {}", unread_count, feed_name);
@@ -529,7 +593,14 @@ fn exec_feed_read(args: Vec<String>) {
             }
 
             // FIXME: Also print saved update errors?
-            for entry in get_feed_entries(feed_name) {
+            let entries = match get_feed_entries(feed_name) {
+                Ok(entries) => entries,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    exit(1);
+                },
+            };
+            for entry in entries {
                 if !entry.read {
                     if let Err(e) = entry_read(entry) {
                         eprintln!("{}", e);
@@ -555,6 +626,14 @@ fn exec_feed_markasread(args: Vec<String>) {
             exit(1);
         }
 
+        let database_path = match get_database_path() {
+            Ok(path) => path,
+            Err(e) => {
+                eprintln!("{}", e);
+                exit(1);
+            },
+        };
+
         let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
             let mut modified_entries: Vec<Entry> = Vec::new();
             for mut entry in entries {
@@ -565,7 +644,7 @@ fn exec_feed_markasread(args: Vec<String>) {
             }
             return modified_entries;
         };
-        if let Err(e) = modify_database(modifier, get_database_path()) {
+        if let Err(e) = modify_database(modifier, database_path) {
             eprintln!("Failed to mark {} as read: {}", feed_name.clone(), e);
             exit(1);
         }
