@@ -666,6 +666,49 @@ fn exec_feed_markasread(args: Vec<String>) {
     }
 }
 
+fn exec_feed_delete(args: Vec<String>) {
+    if args.len() == 2 {
+        let feed_name = args[1].clone();
+
+        let feed_dir = match get_feed_dir(feed_name.clone()) {
+            Ok(feed_dir) => feed_dir,
+            Err(e) => {
+                eprintln!("{}: {}", e, feed_name.clone());
+                exit(1);
+            },
+        };
+
+        let database_path = match get_database_path() {
+            Ok(path) => path,
+            Err(e) => {
+                eprintln!("{}", e);
+                exit(1);
+            },
+        };
+
+        let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
+            let mut modified_entries: Vec<Entry> = Vec::new();
+            for entry in entries {
+                if entry.feed != feed_name {
+                    modified_entries.push(entry);
+                }
+            }
+            return modified_entries;
+        };
+        if let Err(e) = modify_database(modifier, database_path) {
+            eprintln!("Failed to delete entries: {}", e);
+            exit(1);
+        }
+
+        if let Err(e) = fs::remove_dir_all(feed_dir) {
+            eprintln!("Failed to delete feed configuration: {}", e);
+            exit(1);
+        }
+    } else {
+        eprintln!("usage: feed-delete <feed>");
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -680,7 +723,7 @@ fn main() {
         Some("feed-unread") => exec_feed_unread(args),
         Some("feed-read") => exec_feed_read(args),
         Some("feed-markasread") => exec_feed_markasread(args),
-        // FIXME: Need a new feed-delete, which cleans up the database as well
+        Some("feed-delete") => exec_feed_delete(args),
         Some(executable_name) => {
             eprintln!("Executable name {} not recognized", executable_name);
             std::process::exit(1);
