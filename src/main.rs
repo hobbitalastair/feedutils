@@ -525,6 +525,11 @@ fn exec_feed_read(args: Vec<String>) {
 fn exec_feed_markasread(args: Vec<String>) {
     if args.len() == 2 {
         let feed_name = args[1].clone();
+        if let Err(e) = get_feed_dir(feed_name.clone()) {
+            eprintln!("{}: {}", e, feed_name.clone());
+            exit(1);
+        }
+
         let modifier = |entries: Vec<Entry>| -> Vec<Entry> {
             let mut modified_entries: Vec<Entry> = Vec::new();
             for mut entry in entries {
