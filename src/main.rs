@@ -461,21 +461,27 @@ fn mark_entry_as_read(feed_name: String, entry_id: String) -> Result<(), MarkEnt
 #[derive(Error, Debug)]
 enum EntryReadError {
     #[error(transparent)]
+    FeedDirError(#[from] FeedDirError),
+    #[error(transparent)]
     IoError(#[from] io::Error),
     #[error(transparent)]
     MarkEntryAsReadError(#[from] MarkEntryAsReadError),
+    #[error("Failed to launch open executable: {source}: {path}")]
+    ExecError {
+        source: io::Error,
+        path: PathBuf,
+    },
 }
 
-fn entry_read(entry: Entry) -> Result<(), EntryReadError> {
-    // FIXME: Allow configurable open functions (ie with yes/no prompts)
-    // FIXME: Add extra sanitization of the URL here for extra safety
-    let status = Command::new("chromium")
-                    .args(["--", entry.link.as_str()])
-                    .status();
-    // FIXME: Implement error handling
-    if !status?.success() {
-        return Ok(());
-    }
+fn read_entry(feed_name: String, entry: Entry) -> Result<(), EntryReadError> {
+    let feed_dir_path = get_feed_dir(feed_name.clone())?;
+
+    let exec_path = feed_dir_path.clone().join("open");
+    Command::new(exec_path.clone())
+        .env("TITLE", entry.title.as_str())
+        .env("LINK", entry.link.as_str())
+        .status()
+        .map_err(|e| EntryReadError::ExecError{ source: e, path: exec_path })?;
     
     return mark_entry_as_read(entry.feed, entry.id).map_err(|e| EntryReadError::MarkEntryAsReadError(e));
 }
@@ -593,7 +599,7 @@ fn exec_feed_read(args: Vec<String>) {
             }
 
             // FIXME: Also print saved update errors?
-            let entries = match get_feed_entries(feed_name) {
+            let entries = match get_feed_entries(feed_name.clone()) {
                 Ok(entries) => entries,
                 Err(e) => {
                     eprintln!("{}", e);
@@ -602,7 +608,7 @@ fn exec_feed_read(args: Vec<String>) {
             };
             for entry in entries {
                 if !entry.read {
-                    if let Err(e) = entry_read(entry) {
+                    if let Err(e) = read_entry(feed_name.clone(), entry) {
                         eprintln!("{}", e);
                         ok = false;
                     }
