@@ -485,7 +485,7 @@ fn exec_feed_unread(args: Vec<String>) {
         let mut feed_and_unread = Vec::from_iter(count_unread_entries().into_iter());
         feed_and_unread.sort_by(|a, b| (a.1, &a.0).cmp(&(b.1, &b.0)));
         for (feed_name, unread_count) in feed_and_unread {
-            println!("\t{} {}", unread_count, feed_name);
+            println!("{: >4} {}", unread_count, feed_name);
         }
     } else {
         eprintln!("usage: feed-unread");
