@@ -19,5 +19,5 @@ if [ "$#" -ne 0 ]; then
 fi
 
 for feed in "${FEED_DIR}/"*; do
-    [ -d "${feed}" ] && [ -f "${feed}/daily" ] && feed-read "${feed}"
+    [ -d "${feed}" ] && [ -f "${feed}/daily" ] && feed-read "${feed##*/}"
 done
