@@ -251,7 +251,7 @@ fn parse_feed<R: std::io::Read>(reader: R, feed: &String) -> Vec<Entry> {
     while let Some(e) = parser.next() {
         match e {
             Ok(XmlEvent::StartElement { name, .. }) => {
-                if name.local_name == "rss" {
+                if name.local_name == "rss" || name.local_name == "RDF" {
                     // Probably an RSS feed
                     return parse_rss(parser, feed);
                 }
