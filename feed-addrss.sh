@@ -27,7 +27,7 @@ mkdir "${name}"
 cd "${name}"
 ln -s ../browser-open.sh ./open
 printf '#!/usr/bin/env sh\n' >> fetch
-printf "curl -L -o - '%s' | rss2atom\n" "${rss}" >> fetch
+printf "exec curl -L -o - '%s'\n" "${rss}" >> fetch
 chmod +x fetch
 feed-update "${name}"
 feed-markasread "${name}"
